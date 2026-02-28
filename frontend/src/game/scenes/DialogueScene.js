@@ -26,9 +26,6 @@ export class DialogueScene extends Scene {
         // ─── PLAYER CHOICES (bottom area) ───
         this._drawPlayerChoices(data.player_choices || []);
 
-        // ─── DEBUG OVERLAY (right side) ───
-        this._drawDebugTasks(data.activeTasks || [], data.blockedTasks || []);
-
         // Highlight initial selection
         this._updateSelection();
 
@@ -339,64 +336,6 @@ export class DialogueScene extends Scene {
         prompt.setOrigin(0.5, 0);
         prompt.setScrollFactor(0);
         prompt.setDepth(11);
-    }
-
-    // ══════════════════════
-    //  DEBUG TASKS (Right)
-    // ══════════════════════
-    _drawDebugTasks(activeTasks, blockedTasks) {
-        const startX = 580;
-        let startY = 150;
-
-        const gfx = this.add.graphics();
-        gfx.setScrollFactor(0);
-        gfx.setDepth(20);
-        gfx.fillStyle(0x000000, 0.7);
-        gfx.fillRect(startX - 10, startY - 10, 220, 400);
-
-        this.add.text(startX, startY, 'DEBUG: TASKS TO LLM', {
-            fontSize: '12px',
-            fontFamily: 'monospace',
-            color: '#ffdd00',
-            fontStyle: 'bold'
-        }).setDepth(21).setScrollFactor(0);
-
-        startY += 20;
-
-        this.add.text(startX, startY, `Active Tasks (${activeTasks.length}):`, {
-            fontSize: '11px',
-            fontFamily: 'monospace',
-            color: '#88ff88',
-        }).setDepth(21).setScrollFactor(0);
-        startY += 15;
-
-        activeTasks.forEach(t => {
-            this.add.text(startX + 10, startY, `- ${t.id}\nCond: ${t.completion_condition}`, {
-                fontSize: '10px',
-                fontFamily: 'monospace',
-                color: '#ffffff',
-                wordWrap: { width: 190 }
-            }).setDepth(21).setScrollFactor(0);
-            startY += 30;
-        });
-
-        startY += 10;
-        this.add.text(startX, startY, `Blocked Tasks (${blockedTasks.length}):`, {
-            fontSize: '11px',
-            fontFamily: 'monospace',
-            color: '#ff8888',
-        }).setDepth(21).setScrollFactor(0);
-        startY += 15;
-
-        blockedTasks.forEach(t => {
-            this.add.text(startX + 10, startY, `- ${t.id}\nMissing: ${t.missing_titles?.join(',')}`, {
-                fontSize: '10px',
-                fontFamily: 'monospace',
-                color: '#bbbbbb',
-                wordWrap: { width: 190 }
-            }).setDepth(21).setScrollFactor(0);
-            startY += 30;
-        });
     }
 
     // ══════════════════════

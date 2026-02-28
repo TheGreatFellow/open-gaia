@@ -1,14 +1,33 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { getBibles } from '../lib/services'
+import { Link, useNavigate } from 'react-router-dom'
+import { getBibles, getBibleById } from '../lib/services'
 import { LoadingScreen } from '../components/LoadingScreen'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card'
 import { Button } from '../components/ui/button'
+import { useGameStore } from '../stores/useGameStore'
 
 export default function BibleList() {
     const [bibles, setBibles] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [isPlaying, setIsPlaying] = useState(false)
+    const navigate = useNavigate()
+    const { setGameBible, setGamePhase } = useGameStore()
+
+    const handlePlayGame = async (bibleSummary) => {
+        try {
+            setIsPlaying(true)
+            const data = await getBibleById(bibleSummary.id)
+            const actualBible = data.game_bible || data
+            setGameBible(actualBible)
+            setGamePhase('playing')
+            navigate('/')
+        } catch (err) {
+            console.error("Failed to fetch full bible for playing:", err)
+            setError(err.response?.data?.detail || err.message || 'Failed to load world for playing')
+            setIsPlaying(false)
+        }
+    }
 
     useEffect(() => {
         const fetchBibles = async () => {
@@ -24,7 +43,7 @@ export default function BibleList() {
         fetchBibles()
     }, [])
 
-    if (loading) return <LoadingScreen />
+    if (loading || isPlaying) return <LoadingScreen />
 
     return (
         <div className="min-h-screen bg-neutral-950 p-6 md:p-12">
@@ -83,11 +102,20 @@ export default function BibleList() {
                                     <span className="text-xs text-neutral-500">
                                         {new Date(bible.created_at).toLocaleDateString()}
                                     </span>
-                                    <Link to={`/bibles/${bible.id}`}>
-                                        <Button variant="outline" size="sm" className="bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-700">
-                                            View Details
+                                    <div className="flex gap-2">
+                                        <Link to={`/bibles/${bible.id}`}>
+                                            <Button variant="outline" size="sm" className="bg-neutral-800 border-neutral-700 text-neutral-200 hover:bg-neutral-700">
+                                                View Details
+                                            </Button>
+                                        </Link>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => handlePlayGame(bible)}
+                                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                                        >
+                                            Play
                                         </Button>
-                                    </Link>
+                                    </div>
                                 </CardFooter>
                             </Card>
                         ))}

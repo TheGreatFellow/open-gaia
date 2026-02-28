@@ -1,6 +1,5 @@
 import { Scene } from 'phaser';
 import { EventBus } from '../EventBus';
-import MOCK_GENERATE_WORLD_RESPONSE from '../../data/mockGameBible';
 
 // ═══════════════════════════════════════════════════════════
 //  TILE FRAME REFERENCE (basechip.png — 8 cols × 133 rows)
@@ -14,8 +13,6 @@ import MOCK_GENERATE_WORLD_RESPONSE from '../../data/mockGameBible';
 //  Row 55-70: Interior floors (440-567)
 //  Row  70+:  Furniture (560+)
 // ═══════════════════════════════════════════════════════════
-
-const BIBLE = MOCK_GENERATE_WORLD_RESPONSE.game_bible;
 
 // ─── Map templates for different terrain types ───
 // Each returns { groundData, tileFrames, playerStart, npcSpawn }
@@ -137,93 +134,15 @@ function generateIslandMap() {
     };
 }
 
-// ─── Map generators by location ID ───
+// ─── Map generators by location ID (fallback/defaults) ───
 const MAP_GENERATORS = {
     'loc_research_station': generateResearchStationMap,
     'loc_ocean_route': generateOceanRouteMap,
     'loc_okafor_island': generateIslandMap
 };
 
-// ─── Build LOCATIONS registry from game bible ───
-function buildLocationsFromBible() {
-    const locations = {};
-    for (const loc of BIBLE.locations) {
-        const gen = MAP_GENERATORS[loc.id];
-        if (!gen) continue;
-        const mapData = gen();
-
-        // Find NPCs for this location
-        const chars = (loc.npcs_present || []).map(npcId => {
-            const charDef = BIBLE.characters.find(c => c.id === npcId);
-            if (!charDef) return null;
-            return {
-                characterId: charDef.id,
-                characterName: charDef.name,
-                spawnX: mapData.npcSpawn.x,
-                spawnY: mapData.npcSpawn.y,
-                spriteKey: 'zombie',
-                role: charDef.role,
-                patrol: { axis: 'y', distance: 4 * 32, speed: 35 }
-            };
-        }).filter(Boolean);
-
-        // Find the story act for this location
-        const act = BIBLE.story_graph.acts.find(a => a.location_id === loc.id);
-
-        locations[loc.id] = {
-            locationId: loc.id,
-            locationName: loc.name,
-            locationDescription: loc.description,
-            moveSpeed: loc.movement_profile?.speed || 100,
-            cameraShake: loc.movement_profile?.camera_shake || false,
-            connectedLocations: loc.connected_to || [],
-            storyAct: act ? { title: act.title, description: act.description, actNumber: act.act_number } : null,
-            tileMap: {
-                width: mapData.width,
-                height: mapData.height,
-                tilewidth: 32,
-                tileheight: 32,
-                layers: [
-                    {
-                        name: 'ground',
-                        type: 'tilelayer',
-                        width: mapData.width,
-                        height: mapData.height,
-                        data: mapData.ground
-                    },
-                    {
-                        name: 'collision',
-                        type: 'tilelayer',
-                        width: mapData.width,
-                        height: mapData.height,
-                        data: new Array(mapData.width * mapData.height).fill(0)
-                    },
-                    {
-                        name: 'objects',
-                        type: 'objectgroup',
-                        objects: [
-                            { name: 'player_start', x: mapData.playerStart.x, y: mapData.playerStart.y, width: 32, height: 32 },
-                            { name: 'npc_spawn_1', x: mapData.npcSpawn.x, y: mapData.npcSpawn.y, width: 32, height: 32 }
-                        ]
-                    }
-                ]
-            },
-            characters: chars,
-            tileFrames: mapData.tileFrames
-        };
-    }
-    return locations;
-}
-
-const LOCATIONS = buildLocationsFromBible();
-const PROTAGONIST = BIBLE.characters.find(c => c.role === 'protagonist');
-const START_LOCATION_ID = BIBLE.story_graph.acts[0]?.location_id || Object.keys(LOCATIONS)[0];
-
-// Track which locations the player has visited (for story intro)
-const visitedLocations = new Set();
-
 // ═══════════════════════════════════════════
-//  WORLD SCENE — driven by game bible
+//  WORLD SCENE — driven by game bible from Registry
 // ═══════════════════════════════════════════
 export class WorldScene extends Scene {
     constructor() {
@@ -231,13 +150,84 @@ export class WorldScene extends Scene {
         this.lastDirection = 'down';
         this.canInteract = true;
         this._transitioning = false;
+        this.visitedLocations = new Set();
+    }
+
+    buildLocationsFromBible(bible) {
+        const locations = {};
+        for (const loc of bible.locations) {
+            // Default to research station map if ID not exactly matched
+            const gen = MAP_GENERATORS[loc.id] || generateResearchStationMap;
+            const mapData = gen();
+
+            // Find NPCs for this location
+            const chars = (loc.npcs_present || []).map(npcId => {
+                const charDef = bible.characters.find(c => c.id === npcId);
+                if (!charDef) return null;
+                return {
+                    characterId: charDef.id,
+                    characterName: charDef.name,
+                    spawnX: mapData.npcSpawn.x,
+                    spawnY: mapData.npcSpawn.y,
+                    spriteKey: 'zombie',
+                    role: charDef.role,
+                    patrol: { axis: 'y', distance: 4 * 32, speed: 35 }
+                };
+            }).filter(Boolean);
+
+            // Find the story act for this location
+            const act = bible.story_graph.acts.find(a => a.location_id === loc.id);
+
+            locations[loc.id] = {
+                locationId: loc.id,
+                locationName: loc.name,
+                locationDescription: loc.description,
+                moveSpeed: loc.movement_profile?.speed || 100,
+                cameraShake: loc.movement_profile?.camera_shake || false,
+                connectedLocations: loc.connected_to || [],
+                storyAct: act ? { title: act.title, description: act.description, actNumber: act.act_number } : null,
+                tileMap: {
+                    width: mapData.width,
+                    height: mapData.height,
+                    tilewidth: 32,
+                    tileheight: 32,
+                    layers: [
+                        { name: 'ground', type: 'tilelayer', width: mapData.width, height: mapData.height, data: mapData.ground },
+                        { name: 'collision', type: 'tilelayer', width: mapData.width, height: mapData.height, data: new Array(mapData.width * mapData.height).fill(0) },
+                        {
+                            name: 'objects', type: 'objectgroup', objects: [
+                                { name: 'player_start', x: mapData.playerStart.x, y: mapData.playerStart.y, width: 32, height: 32 },
+                                { name: 'npc_spawn_1', x: mapData.npcSpawn.x, y: mapData.npcSpawn.y, width: 32, height: 32 }
+                            ]
+                        }
+                    ]
+                },
+                characters: chars,
+                tileFrames: mapData.tileFrames
+            };
+        }
+        return locations;
     }
 
     create(data) {
-        const locId = (data && data.locationId) ? data.locationId : START_LOCATION_ID;
-        const locData = LOCATIONS[locId];
+        const bible = this.registry.get('gameBible');
+        if (!bible) {
+            console.warn('WorldScene waiting for gameBible in registry...');
+            this._onBibleReady = () => {
+                this.scene.restart(data);
+            };
+            EventBus.on('bible-updated', this._onBibleReady);
+            return;
+        }
+
+        this.locations = this.buildLocationsFromBible(bible);
+        this.protagonist = bible.characters.find(c => c.role === 'protagonist');
+        this.startLocationId = bible.story_graph.acts[0]?.location_id || Object.keys(this.locations)[0];
+
+        const locId = (data && data.locationId) ? data.locationId : this.startLocationId;
+        const locData = this.locations[locId];
         if (!locData) {
-            console.error(`Location ${locId} not found!`);
+            console.error(`Location ${locId} not found in dynamic locations!`);
             return;
         }
         this.locationData = locData;
@@ -313,7 +303,7 @@ export class WorldScene extends Scene {
         this.player.body.setOffset(20, 36);
 
         // ─── Player name label (GOLD) ───
-        const protagonistName = PROTAGONIST ? PROTAGONIST.name : 'Hero';
+        const protagonistName = this.protagonist ? this.protagonist.name : 'Hero';
         this.playerLabel = this.add.text(playerX, playerY - 40, protagonistName, {
             fontSize: '11px',
             fontFamily: 'monospace',
@@ -374,7 +364,7 @@ export class WorldScene extends Scene {
 
         // ─── Exit zones ───
         // Determine direction based on location order in the game bible
-        const locOrder = BIBLE.locations.map(l => l.id);
+        const locOrder = bible.locations.map(l => l.id);
         const currentIdx = locOrder.indexOf(locData.locationId);
 
         this.exitZones = [];
@@ -392,7 +382,7 @@ export class WorldScene extends Scene {
                 this.physics.add.existing(exitZone, true);
 
                 // Find destination name
-                const destLoc = LOCATIONS[connId];
+                const destLoc = this.locations[connId];
                 const destName = destLoc ? destLoc.locationName : connId;
 
                 // Arrow + destination label
@@ -415,7 +405,7 @@ export class WorldScene extends Scene {
                 this.physics.add.overlap(this.player, exitZone, () => {
                     if (this._transitioning) return;
                     this._transitioning = true;
-                    const dest = LOCATIONS[connId];
+                    const dest = this.locations[connId];
                     if (dest) {
                         // Determine which edge the player will ARRIVE at in the new map
                         // If exiting right (→), player arrives on the LEFT of the new map
@@ -456,8 +446,8 @@ export class WorldScene extends Scene {
         EventBus.on('load-location', this._onLoadLocation);
 
         // ─── Story intro (first visit only) ───
-        if (!visitedLocations.has(locId)) {
-            visitedLocations.add(locId);
+        if (!this.visitedLocations.has(locId)) {
+            this.visitedLocations.add(locId);
             this.showStoryIntro(locData);
         }
 
@@ -655,5 +645,6 @@ export class WorldScene extends Scene {
         if (this._onDialogueClosed) EventBus.off('dialogue-closed', this._onDialogueClosed);
         if (this._onDialogueReady) EventBus.off('dialogue-ready', this._onDialogueReady);
         if (this._onLoadLocation) EventBus.off('load-location', this._onLoadLocation);
+        if (this._onBibleReady) EventBus.off('bible-updated', this._onBibleReady);
     }
 }
