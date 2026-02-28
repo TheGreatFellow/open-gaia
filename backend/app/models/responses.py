@@ -16,13 +16,21 @@ class GenerateWorldResponse(BaseModel):
     game_bible: GameBible
 
 
+class PlayerChoice(BaseModel):
+    """A single dialogue choice presented to the player."""
+    index: int
+    text: str
+    trust_hint: int
+
+
 class NPCDialogueResponse(BaseModel):
     """Returned by POST /api/npc-dialogue"""
     npc_response: str
-    emotion: str  # happy | neutral | angry | suspicious | grateful
     trust_delta: int
     new_trust_level: int
-    task_unlocked: Optional[str] = None  # task_id if trust crossed threshold
+    is_convinced: bool
+    emotion: str  # happy | neutral | angry | suspicious | grateful
+    player_choices: list[PlayerChoice]
 
 
 class BranchStoryResponse(BaseModel):
