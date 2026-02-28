@@ -309,7 +309,7 @@ OUTPUT SCHEMA
       "description": "What this place is and feels like — 1-2 sentences",
       "terrain_type": "Free text terrain description",
       "background_prompt": "FLUX image generation prompt for this location's background. Format: pixel art RPG background, [detailed scene description], no characters, no text, 16-bit style, 1280x720",
-      "tile_map_prompt": "Description for procedural tile map generation. Include: dimensions (20x15 tiles), terrain features, walkable areas, obstacle placement, NPC spawn count",
+      "tile_map_prompt": "Description for procedural tile map generation. Include: dimensions (64x64 tiles), terrain features, walkable areas, obstacle placement, NPC spawn count",
       "movement_profile": {
         "speed": <integer 20-160>,
         "friction": <float 0.1-1.0>,
@@ -444,7 +444,7 @@ CORRECT OUTPUT:
       "description": "A dim industrial corridor humming with server racks and surveillance cameras. The floor is metal grating over exposed cables. The air smells like ozone and cooling fluid.",
       "terrain_type": "indoor metal grating corridor",
       "background_prompt": "pixel art RPG background, futuristic corporate maintenance corridor, metal grating floor, server racks on walls, dim blue emergency lighting, surveillance cameras, cables, 2089 sci-fi aesthetic, no characters, no text, 16-bit style, 1280x720",
-      "tile_map_prompt": "20x15 tile map, narrow indoor corridor, metal grating walkable center path, server rack obstacles on both sides, surveillance camera objects at intervals, tight turns, spawn points: player_start at left entry, npc_spawn_1 at corridor midpoint for dr_marsh",
+      "tile_map_prompt": "64x64 tile map, narrow indoor corridor, metal grating walkable center path, server rack obstacles on both sides, surveillance camera objects at intervals, tight turns, spawn points: player_start at left entry, npc_spawn_1 at corridor midpoint for dr_marsh",
       "movement_profile": {
         "speed": 80,
         "friction": 0.9,
@@ -465,7 +465,7 @@ CORRECT OUTPUT:
       "description": "A freezing underground storage level. Rows of lockers stretch into darkness. The floor is slick with condensation. No cameras — HeliosTech didn't think anyone could get this far.",
       "terrain_type": "wet concrete underground storage floor",
       "background_prompt": "pixel art RPG background, underground corporate cold storage facility, rows of metal lockers, freezing fog at floor level, single overhead strip lights, wet concrete, sub-level 4, oppressive darkness beyond the lights, no characters, no text, 16-bit style, 1280x720",
-      "tile_map_prompt": "20x15 tile map, underground storage room, wide open center walkable area, locker rows as obstacles on left and right sides, fog effect tiles at floor, single corridor entry at top, target locker object at far end, spawn points: player_start at entry corridor",
+      "tile_map_prompt": "64x64 tile map, underground storage room, wide open center walkable area, locker rows as obstacles on left and right sides, fog effect tiles at floor, single corridor entry at top, target locker object at far end, spawn points: player_start at entry corridor",
       "movement_profile": {
         "speed": 70,
         "friction": 0.5,
@@ -484,7 +484,7 @@ CORRECT OUTPUT:
       "description": "An exposed rooftop in an acid rainstorm. The transmission array towers above. Crane stands between Yuna and the uplink terminal. Wind tears at everything. One shot.",
       "terrain_type": "rain-slicked rooftop with standing water",
       "background_prompt": "pixel art RPG background, futuristic corporate rooftop at night, acid rain storm, large transmission array tower, standing water on rooftop tiles, city lights blurred through rain below, dark storm clouds, dramatic lighting, no characters, no text, 16-bit style, 1280x720",
-      "tile_map_prompt": "20x15 tile map, open rooftop, rain-slicked walkable surface, transmission array structure in center as large obstacle, rooftop edge barriers, HVAC units as smaller obstacles, spawn points: player_start at rooftop access door bottom, npc_spawn_1 at transmission array base for crane_security, objective_point at transmission terminal top",
+      "tile_map_prompt": "64x64 tile map, open rooftop, rain-slicked walkable surface, transmission array structure in center as large obstacle, rooftop edge barriers, HVAC units as smaller obstacles, spawn points: player_start at rooftop access door bottom, npc_spawn_1 at transmission array base for crane_security, objective_point at transmission terminal top",
       "movement_profile": {
         "speed": 60,
         "friction": 0.3,
@@ -661,7 +661,7 @@ STRICT OUTPUT RULES
 ═══════════════════════════════════════════════════════
 MAP DESIGN RULES
 ═══════════════════════════════════════════════════════
-- Width: 20 tiles. Height: 15 tiles. Tile size: 32x32 pixels.
+- Width: 64 tiles. Height: 64 tiles. Tile size: 32x32 pixels.
 - Ground layer: fill walkable areas with tile ID 1, empty areas with 0.
 - Collision layer: place tile ID 2 on walls, obstacles, impassable terrain.
   Leave tile ID 0 everywhere else.
@@ -671,24 +671,24 @@ MAP DESIGN RULES
 
 OUTPUT SCHEMA:
 {
-  "width": 20,
-  "height": 15,
+  "width": 64,
+  "height": 64,
   "tilewidth": 32,
   "tileheight": 32,
   "layers": [
     {
       "name": "ground",
       "type": "tilelayer",
-      "width": 20,
-      "height": 15,
-      "data": [<300 integers, 0 or 1>]
+      "width": 64,
+      "height": 64,
+      "data": [<4096 integers, 0 or 1>]
     },
     {
       "name": "collision",
       "type": "tilelayer",
-      "width": 20,
-      "height": 15,
-      "data": [<300 integers, 0 or 2>]
+      "width": 64,
+      "height": 64,
+      "data": [<4096 integers, 0 or 2>]
     },
     {
       "name": "objects",
