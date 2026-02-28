@@ -21,7 +21,7 @@ export const useGameStore = create((set) => ({
                 }
             })
         }
-        return { gameBible: bible, npcStates: newNpcStates }
+        return { gameBible: bible, npcStates: newNpcStates, completedTasks: [] }
     }),
 
     npcStates: {},
