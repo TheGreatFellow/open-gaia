@@ -1,6 +1,9 @@
 import { create } from 'zustand'
 
 export const useGameStore = create((set) => ({
-    gamePhase: 'playing', // 'input' | 'loading' | 'playing'  (temporarily set to 'playing' for dev)
+    gamePhase: 'input', // 'input' | 'loading' | 'playing'
     setGamePhase: (phase) => set({ gamePhase: phase }),
+
+    gameBible: null,
+    setGameBible: (bible) => set({ gameBible: bible }),
 }))
