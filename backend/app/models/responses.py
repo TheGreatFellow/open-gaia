@@ -2,6 +2,8 @@
 Response models for all API endpoints.
 """
 
+from __future__ import annotations
+
 from typing import Optional
 
 from pydantic import BaseModel
@@ -12,31 +14,31 @@ from app.models.game_bible import GameBible
 class GenerateWorldResponse(BaseModel):
     """Returned by POST /api/generate-world"""
     game_bible: GameBible
-    portraits: dict[str, str]  # { character_id: image_url }
-
-
-class DialogueOption(BaseModel):
-    """A single dialogue choice presented to the player."""
-    text: str
-    trust_delta: int  # e.g. +20, +5, -10
 
 
 class NPCDialogueResponse(BaseModel):
     """Returned by POST /api/npc-dialogue"""
-    npc_reply: str
-    emotion: str  # e.g. "angry", "pleased", "neutral"
+    npc_response: str
+    emotion: str  # happy | neutral | angry | suspicious | grateful
+    trust_delta: int
     new_trust_level: int
-    options: list[DialogueOption]  # Next 3 choices for the player
     task_unlocked: Optional[str] = None  # task_id if trust crossed threshold
 
 
 class BranchStoryResponse(BaseModel):
     """Returned by POST /api/branch-story"""
     narrative: str
-    new_tasks: list[dict] = []  # Any newly injected tasks
-    location_change: Optional[str] = None  # location_id to transition to
+    consequence: str
+    new_scene_description: str
+    tasks_affected: list[str] = []
+    steers_toward_goal: bool = True
 
 
 class GeneratePortraitResponse(BaseModel):
     """Returned by POST /api/generate-portrait"""
     image_url: str
+
+
+class GenerateTileMapResponse(BaseModel):
+    """Returned by POST /api/generate-tilemap"""
+    tile_map: dict

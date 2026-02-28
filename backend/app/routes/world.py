@@ -1,13 +1,12 @@
 """
 POST /api/generate-world
 
-Orchestrates the full world-building pipeline:
-  1. Check Redis cache
-  2. Call Mistral Large → Game Bible JSON
-  3. Validate with Pydantic
-  4. Fan-out portrait generation in parallel
-  5. Cache result in Redis
-  6. Return to frontend
+Orchestrates the full 3-step world-building pipeline:
+  Step 1: Mistral Large → character extraction
+  Step 2: Mistral Large → world, tasks, locations (using Step 1 characters)
+  Step 3: Mistral Large → merge into final Game Bible
+  Step 4: Fan-out portrait + sprite generation in parallel
+  Step 5: Cache and return
 """
 
 import hashlib
@@ -41,35 +40,26 @@ async def generate_world(req: GenerateWorldRequest):
     if cached:
         logger.info("Cache HIT for key=%s", cache_key)
         bible = GameBible(**cached)
-        # Still need portraits — they aren't cached separately yet
-        portraits = await portrait_service.generate_portraits_batch(
-            [c.model_dump() for c in bible.characters]
-        )
-        return GenerateWorldResponse(game_bible=bible, portraits=portraits)
+        return GenerateWorldResponse(game_bible=bible)
 
-    # 2. Generate via Mistral Large
+    # 2. Run the 3-step Mistral Large pipeline
     try:
         raw_bible = await mistral_client.generate_game_bible(
             req.story, req.end_goal
         )
     except Exception as exc:
-        logger.error("Mistral Large failed: %s — using fallback", exc)
+        logger.error("World generation pipeline failed: %s — using fallback", exc)
         raw_bible = FALLBACK_GAME_BIBLE
 
-    # 3. Validate
+    # 3. Validate with Pydantic
     try:
         bible = GameBible(**raw_bible)
     except Exception as exc:
         logger.error("Game Bible validation failed: %s — using fallback", exc)
         bible = GameBible(**FALLBACK_GAME_BIBLE)
 
-    # 4. Generate portraits in parallel
-    portraits = await portrait_service.generate_portraits_batch(
-        [c.model_dump() for c in bible.characters]
-    )
-
     # 5. Cache
     await redis_manager.set_game_bible(cache_key, bible.model_dump())
 
     # 6. Return
-    return GenerateWorldResponse(game_bible=bible, portraits=portraits)
+    return GenerateWorldResponse(game_bible=bible)

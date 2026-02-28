@@ -35,6 +35,8 @@ async def branch_story(req: BranchStoryRequest):
 
     return BranchStoryResponse(
         narrative=result.get("narrative", "The story continues..."),
-        new_tasks=result.get("new_tasks", []),
-        location_change=result.get("location_change"),
+        consequence=result.get("consequence", ""),
+        new_scene_description=result.get("new_scene_description", ""),
+        tasks_affected=result.get("tasks_affected", []),
+        steers_toward_goal=result.get("steers_toward_goal", True),
     )

@@ -1,63 +1,15 @@
 """
-Pydantic v2 models that mirror the Game Bible JSON schema exactly.
+Pydantic v2 models that mirror the Game Bible JSON schema.
+
+Fully dynamic — no fixed archetypes, terrain types, or task types.
+Everything derives from the user's story.
 """
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
-
-
-# ── Enums ────────────────────────────────────────────
-
-class Tone(str, Enum):
-    DARK = "dark"
-    ADVENTURE = "adventure"
-    MYSTERY = "mystery"
-    COMEDY = "comedy"
-
-
-class Archetype(str, Enum):
-    WARRIOR = "warrior"
-    MERCHANT = "merchant"
-    WIZARD = "wizard"
-    GUARD = "guard"
-    VILLAIN = "villain"
-    ELDER = "elder"
-    CHILD = "child"
-
-
-class Role(str, Enum):
-    PROTAGONIST = "protagonist"
-    NPC = "npc"
-    ANTAGONIST = "antagonist"
-    ALLY = "ally"
-
-
-class Relationship(str, Enum):
-    NEUTRAL = "neutral"
-    HOSTILE = "hostile"
-    FRIENDLY = "friendly"
-    UNKNOWN = "unknown"
-
-
-class TaskType(str, Enum):
-    NPC_PERSUASION = "npc_persuasion"
-    ITEM_FETCH = "item_fetch"
-    INFORMATION_GATHER = "information_gather"
-    MORAL_CHOICE = "moral_choice"
-    PUZZLE = "puzzle"
-
-
-class LocationType(str, Enum):
-    FOREST = "forest"
-    TOWN = "town"
-    DUNGEON = "dungeon"
-    CASTLE = "castle"
-    MARKETPLACE = "marketplace"
-    CAVE = "cave"
 
 
 # ── Sub-models ───────────────────────────────────────
@@ -69,33 +21,45 @@ class DialogueTree(BaseModel):
     convinced: str
 
 
+class MovementProfile(BaseModel):
+    speed: int = Field(ge=20, le=160)
+    friction: float = Field(ge=0.1, le=1.0)
+    camera_shake: bool = False
+    ambient_sound: str
+    step_sound: str
+
+
 class World(BaseModel):
     title: str
     setting: str
     end_goal: str
-    tone: Tone
+    tone: str  # Free text — e.g. "tense sci-fi political thriller"
+    time_of_day: str = "unknown"
+    weather: str = "clear"
 
 
 class Character(BaseModel):
     id: str
     name: str
-    archetype: Archetype
-    role: Role
+    description: str  # Free text — what kind of person/entity
+    visual_description: str  # What they look like in detail
+    role: str  # protagonist | npc | antagonist | ally
     motivation: str
     personality_traits: list[str]
-    relationship_to_player: Relationship
+    relationship_to_player: str  # neutral | hostile | friendly | unknown
     convincing_triggers: list[str]
     trust_threshold: int = Field(ge=0, le=100)
+    movement_style: str  # How they move when idle
+    sprite_prompt: str  # FLUX prompt for sprite generation
+    portrait_prompt: str  # FLUX prompt for dialogue portrait
     dialogue_tree: DialogueTree
-    portrait_prompt: str
-    sprite_key: str
 
 
 class Task(BaseModel):
     id: str
     title: str
     description: str
-    type: TaskType
+    type: str  # Free text — e.g. "stealth infiltration", "emotional persuasion"
     assigned_npc: Optional[str] = None
     unlocks: list[str] = Field(default_factory=list)
     requires: list[str] = Field(default_factory=list)
@@ -109,7 +73,7 @@ class Act(BaseModel):
     title: str
     description: str
     tasks_in_act: list[str]
-    location: LocationType
+    location_id: str  # References a location id
 
 
 class StoryGraph(BaseModel):
@@ -121,9 +85,14 @@ class StoryGraph(BaseModel):
 class Location(BaseModel):
     id: str
     name: str
-    type: LocationType
-    background_key: str
+    description: str  # What this place is and feels like
+    terrain_type: str  # Free text terrain description
+    background_prompt: str  # FLUX prompt for background image
+    tile_map_prompt: str  # Description for procedural tile map gen
+    movement_profile: MovementProfile
     npcs_present: list[str] = Field(default_factory=list)
+    npc_spawn_slots: dict[str, str] = Field(default_factory=dict)
+    player_spawn: str = "player_start"
     connected_to: list[str] = Field(default_factory=list)
 
 
