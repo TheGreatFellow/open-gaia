@@ -8,6 +8,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.models.game_bible import DialogueTree
+
 
 class GenerateWorldRequest(BaseModel):
     """POST /api/generate-world"""
@@ -16,11 +18,20 @@ class GenerateWorldRequest(BaseModel):
 
 
 class NPCDialogueRequest(BaseModel):
-    """POST /api/npc-dialogue — frontend sends full character data"""
-    character: dict = Field(..., description="Full character object from Game Bible")
-    player_input: str
+    """POST /api/npc-dialogue — frontend sends character fields from Zustand"""
+    character_id: str
+    character_name: str
+    description: str
+    personality_traits: list[str]
+    motivation: str
+    relationship_to_player: str
+    convincing_triggers: list[str]
     trust_level: int = Field(ge=0, le=100)
-    history: list[dict] = Field(default_factory=list, description="Previous dialogue turns")
+    trust_threshold: int = Field(ge=0, le=100)
+    dialogue_tree: DialogueTree
+    player_choice_index: int = Field(ge=0, le=2)
+    player_choice_text: str
+    conversation_history: list[dict] = Field(default_factory=list)
 
 
 class BranchStoryRequest(BaseModel):

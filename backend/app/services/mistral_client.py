@@ -55,6 +55,37 @@ async def _call_large(system_prompt: str, user_content: str) -> dict:
     return json.loads(response.choices[0].message.content)
 
 
+# ── Generic chat complete (used by dialogue route) ───
+
+async def chat_complete(
+    model: str,
+    system_prompt: str,
+    user_message: str,
+    json_mode: bool = False,
+    temperature: float = 0.7,
+) -> str:
+    """
+    Generic async chat completion helper.
+    Returns the raw string content from the model response.
+    Used by the dialogue route with configurable model/temp/json_mode.
+    """
+    client = _get_client()
+
+    kwargs = {
+        "model": model,
+        "temperature": temperature,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ],
+    }
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+
+    response = await client.chat.complete_async(**kwargs)
+    return response.choices[0].message.content
+
+
 # ── STEP 1: Character extraction (Mistral Large) ────
 
 async def generate_characters(story: str, end_goal: str) -> dict:
