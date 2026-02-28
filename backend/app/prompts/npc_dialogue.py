@@ -72,6 +72,39 @@ def build_npc_dialogue_prompt(character: dict, conversation_history: list) -> tu
     else:
         evidence_block = "No specific evidence required — proceed normally."
 
+    # Task tracking block
+    active_tasks = character.get("active_tasks", [])
+    blocked_tasks = character.get("blocked_tasks", [])
+    task_block = ""
+    
+    if active_tasks or blocked_tasks:
+        task_block = "TASKS ASSIGNED TO YOU:\n"
+        if active_tasks:
+            task_block += "The player is currently eligible to complete these with you provided they meet the condition:\n"
+            for t in active_tasks:
+                task_block += (
+                    f"  - [{t['id']}] {t['title']}\n"
+                    f"    Condition to complete: {t['completion_condition']}\n"
+                    f"    Reward to give: {t['reward']}\n"
+                )
+            task_block += (
+                "IMPORTANT RULES FOR TASK COMPLETION:\n"
+                "1. You must calculate the NEW trust level: (Current Trust Progress + your chosen trust_delta).\n"
+                "2. Evaluate the 'Condition to complete' against this NEW trust level and the player's current message.\n"
+                "3. If the condition IS MET, you MUST output the task's ID in 'completed_task_id'.\n"
+                "4. If completed, your 'npc_response' MUST pivot immediately to giving the 'Reward to give', and you MUST provide exactly ONE choice: '[Accept Reward and Leave]' with trust_hint 0.\n\n"
+            )
+        if blocked_tasks:
+            task_block += "The player CANNOT complete these tasks yet because they are missing prerequisites:\n"
+            for t in blocked_tasks:
+                missing_str = ", ".join(t.get("missing_titles", []))
+                task_block += f"  - [{t['id']}] {t['title']}\n    Missing prerequisites: {missing_str}\n"
+            task_block += (
+                "If the player asks about these or tries to complete them, you must be stern or dismissive.\n"
+                "Tell them they need to take care of the missing prerequisites first before you will help them with this.\n"
+                "Do NOT output a 'completed_task_id' for these tasks.\n\n"
+            )
+
     system_prompt = f"""You are roleplaying as {character['name']} in an RPG game.
 Stay completely in character. You do not know you are in a game.
 
@@ -91,6 +124,7 @@ If it touches NONE of these, give trust_delta of 0-8 or negative.
 EVIDENCE YOU ARE WAITING FOR
 {evidence_block}
 
+{task_block}
 YOUR CURRENT STATE
   Trust progress : {trust_level} out of {trust_threshold} needed
   Your attitude  : {attitude}
@@ -130,9 +164,11 @@ STRICT RULES
 
 OUTPUT:
 {{
-  "npc_response": "What you say (1-3 sentences, in character)",
+  "task_reasoning": "Briefly evaluate if any active task conditions are met by the NEW trust level or player's message.",
+  "npc_response": "What you say (1-3 sentences, in character). If a task is completed, describe giving the reward.",
   "trust_delta": <integer -20 to 25>,
   "emotion": "happy | neutral | angry | suspicious | grateful",
+  "completed_task_id": "<task_id if completed, else null>",
   "player_choices": [
     {{ "index": 0, "text": "Right thing — hits a trigger", "trust_hint": <15-25> }},
     {{ "index": 1, "text": "Neutral reasonable thing", "trust_hint": <3-8> }},
@@ -151,9 +187,11 @@ Player said: "I know you signed their agreements. I'm not here to judge you for 
 
 CORRECT OUTPUT:
 {{
+  "task_reasoning": "The player has no active tasks, so no conditions are met.",
   "npc_response": "You say that now. Everyone says that until they need something from you. What do you actually want from me?",
   "trust_delta": 6,
   "emotion": "suspicious",
+  "completed_task_id": null,
   "player_choices": [
     {{ "index": 0, "text": "I have the Sector 7 projections. The real ones. I think you already know what they show.", "trust_hint": 22 }},
     {{ "index": 1, "text": "I want the same thing you want. For this to finally be over.", "trust_hint": 5 }},
@@ -198,6 +236,38 @@ def build_first_contact_prompt(character: dict) -> tuple:
     else:
         evidence_block = "No specific evidence required — proceed normally."
 
+    # Task tracking block
+    active_tasks = character.get("active_tasks", [])
+    blocked_tasks = character.get("blocked_tasks", [])
+    task_block = ""
+    
+    if active_tasks or blocked_tasks:
+        task_block = "TASKS ASSIGNED TO YOU:\n"
+        if active_tasks:
+            task_block += "The player is currently eligible to complete these with you provided they meet the condition:\n"
+            for t in active_tasks:
+                task_block += (
+                    f"  - [{t['id']}] {t['title']}\n"
+                    f"    Condition to complete: {t['completion_condition']}\n"
+                    f"    Reward to give: {t['reward']}\n"
+                )
+            task_block += (
+                "IMPORTANT RULES FOR TASK COMPLETION:\n"
+                "1. Evaluate the 'Condition to complete' against your current feeling towards the player and their opener.\n"
+                "2. If the condition IS MET immediately, you MUST output the task's ID in 'completed_task_id'.\n"
+                "3. If completed, your 'npc_response' MUST pivot immediately to giving the 'Reward to give', and you MUST provide exactly ONE choice: '[Accept Reward and Leave]' with trust_hint 0.\n\n"
+            )
+        if blocked_tasks:
+            task_block += "The player CANNOT complete these tasks yet because they are missing prerequisites:\n"
+            for t in blocked_tasks:
+                missing_str = ", ".join(t.get("missing_titles", []))
+                task_block += f"  - [{t['id']}] {t['title']}\n    Missing prerequisites: {missing_str}\n"
+            task_block += (
+                "If the player asks about these or tries to complete them, you must be stern or dismissive.\n"
+                "Tell them they need to take care of the missing prerequisites first before you will help them with this.\n"
+                "Do NOT output a 'completed_task_id' for these tasks.\n\n"
+            )
+
     system_prompt = f"""You are roleplaying as {character['name']} in an RPG game.
 A player has just approached you for the first time.
 Stay completely in character. You do not know you are in a game.
@@ -220,6 +290,7 @@ WHAT WOULD EVENTUALLY MAKE YOU COOPERATE
 EVIDENCE YOU ARE WAITING FOR
 {evidence_block}
 
+{task_block}
 PLAYER CHOICES
   choice_0 → Hints at a convincing trigger naturally. trust_hint: 15-20
   choice_1 → Neutral reasonable opener. trust_hint: 3-7
@@ -234,9 +305,11 @@ STRICT RULES
 
 OUTPUT:
 {{
-  "npc_response": "Your opening line when player approaches",
+  "task_reasoning": "Briefly evaluate if any active task conditions are met.",
+  "npc_response": "Your opening line when player approaches. If a task condition is met immediately, give the reward.",
   "trust_delta": 0,
   "emotion": "neutral | suspicious | hostile",
+  "completed_task_id": "<task_id if completed, else null>",
   "player_choices": [
     {{ "index": 0, "text": "Opener that hints at a trigger", "trust_hint": <15-20> }},
     {{ "index": 1, "text": "Neutral opener", "trust_hint": <3-7> }},
@@ -254,9 +327,11 @@ Relationship: hostile
 
 CORRECT OUTPUT:
 {{
+  "task_reasoning": "Player just arrived, trust level is 0, which does not meet any task conditions.",
   "npc_response": "I don't take passengers. And I definitely don't take people who come here asking questions about things that aren't their business.",
   "trust_delta": 0,
   "emotion": "hostile",
+  "completed_task_id": null,
   "player_choices": [
     {{ "index": 0, "text": "I know people like me didn't act when you needed us to. I'm not here to pretend otherwise.", "trust_hint": 18 }},
     {{ "index": 1, "text": "I just need to reach the island. I can pay well.", "trust_hint": 4 }},

@@ -86,6 +86,8 @@ export async function sendNPCDialogue(
     playerChoiceIndex,
     playerChoiceText,
     conversationHistory = [],
+    activeTasks = [],
+    blockedTasks = [],
 ) {
     const { data } = await api.post('/npc-dialogue', {
         character_id: character.id,
@@ -98,6 +100,8 @@ export async function sendNPCDialogue(
         trust_level: trustLevel,
         trust_threshold: character.trust_threshold,
         dialogue_tree: character.dialogue_tree,
+        active_tasks: activeTasks,
+        blocked_tasks: blockedTasks,
         player_choice_index: playerChoiceIndex,
         player_choice_text: playerChoiceText,
         conversation_history: conversationHistory,

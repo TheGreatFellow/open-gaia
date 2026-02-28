@@ -1,32 +1,6 @@
 import { Scene } from 'phaser';
 import { EventBus } from '../EventBus';
 
-// Sample NPC response data (will be replaced with API call later)
-const SAMPLE_NPC_RESPONSE = {
-    npc_response: "Go away. I have nothing left to say to anyone. I can't help you.",
-    trust_delta: 0,
-    new_trust_level: 0,
-    is_convinced: false,
-    emotion: "hostile",
-    player_choices: [
-        {
-            index: 0,
-            text: "I have data from WREN that proves MariCorp's crimes are even worse than you feared.",
-            trust_hint: 18
-        },
-        {
-            index: 1,
-            text: "I heard you were a marine biologist. I could use your expertise on the changing migration patterns.",
-            trust_hint: 5
-        },
-        {
-            index: 2,
-            text: "You're Dr. Okafor, right? The UN Tribunal wants you to testify immediately.",
-            trust_hint: -7
-        }
-    ]
-};
-
 export class DialogueScene extends Scene {
     constructor() {
         super('DialogueScene');
@@ -34,7 +8,7 @@ export class DialogueScene extends Scene {
         this.choiceElements = [];
     }
 
-    create() {
+    create(data) {
         this.scene.pause('WorldScene');
 
         // Dim overlay — game world stays visible
@@ -42,15 +16,18 @@ export class DialogueScene extends Scene {
         overlay.setScrollFactor(0);
         overlay.setDepth(0);
 
-        const data = SAMPLE_NPC_RESPONSE;
         this.selectedIndex = 0;
         this.choiceElements = [];
+        this.currentData = data;
 
         // ─── NPC SPEECH (top area) ───
-        this._drawNpcSpeech(data.npc_response, data.emotion, data.new_trust_level);
+        this._drawNpcSpeech(data.npc_response, data.emotion || 'neutral', data.new_trust_level || 0, data.characterName || 'UNKNOWN');
 
         // ─── PLAYER CHOICES (bottom area) ───
-        this._drawPlayerChoices(data.player_choices);
+        this._drawPlayerChoices(data.player_choices || []);
+
+        // ─── DEBUG OVERLAY (right side) ───
+        this._drawDebugTasks(data.activeTasks || [], data.blockedTasks || []);
 
         // Highlight initial selection
         this._updateSelection();
@@ -73,9 +50,12 @@ export class DialogueScene extends Scene {
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
         const confirmChoice = () => {
-            const choice = data.player_choices[this.selectedIndex];
+            const choice = data.player_choices && data.player_choices[this.selectedIndex];
             if (choice) {
-                EventBus.emit('player-choice', choice);
+                const isReward = data.completed_task_id != null && data.player_choices.length === 1;
+                if (!isReward) {
+                    EventBus.emit('player-choice', { ...choice, characterId: data.characterId });
+                }
                 this._closeDialogue();
             }
         };
@@ -88,10 +68,14 @@ export class DialogueScene extends Scene {
             Phaser.Input.Keyboard.KeyCodes.THREE
         ];
         numKeys.forEach((keyCode, i) => {
-            if (i < data.player_choices.length) {
+            if (data.player_choices && i < data.player_choices.length) {
                 const key = this.input.keyboard.addKey(keyCode);
                 key.on('down', () => {
-                    EventBus.emit('player-choice', data.player_choices[i]);
+                    const choice = data.player_choices[i]
+                    const isReward = data.completed_task_id != null && data.player_choices.length === 1;
+                    if (!isReward) {
+                        EventBus.emit('player-choice', { ...choice, characterId: data.characterId });
+                    }
                     this._closeDialogue();
                 });
             }
@@ -101,7 +85,7 @@ export class DialogueScene extends Scene {
     // ══════════════════════════════════════════════
     //  NPC SPEECH — top section with zombie portrait
     // ══════════════════════════════════════════════
-    _drawNpcSpeech(message, emotion, trustLevel) {
+    _drawNpcSpeech(message, emotion, trustLevel, characterName) {
         const gfx = this.add.graphics();
         gfx.setScrollFactor(0);
         gfx.setDepth(10);
@@ -133,7 +117,7 @@ export class DialogueScene extends Scene {
         gfx.strokeRect(portX, portY, portSize, portSize);
 
         // ── NPC name label ──
-        const nameLabel = this.add.text(100, 12, 'WREN', {
+        const nameLabel = this.add.text(100, 12, characterName.toUpperCase(), {
             fontSize: '16px',
             fontFamily: 'monospace',
             color: this._emotionHex(emotion),
@@ -266,21 +250,41 @@ export class DialogueScene extends Scene {
         // ── Choice bars ──
         choices.forEach((choice, i) => {
             const cy = startY + i * (choiceH + gap);
+            const isReward = this.currentData?.completed_task_id != null && choices.length === 1;
 
             const gfx = this.add.graphics();
             gfx.setScrollFactor(0);
             gfx.setDepth(10);
 
-            gfx.fillStyle(0x1a2a3a, 0.85);
-            gfx.fillRoundedRect(startX, cy, choiceW, choiceH, 4);
-            gfx.lineStyle(1, 0x3a5a7a, 1);
-            gfx.strokeRoundedRect(startX, cy, choiceW, choiceH, 4);
+            if (isReward) {
+                gfx.fillStyle(0x3a2a1a, 0.95);
+                gfx.fillRoundedRect(startX, cy, choiceW, choiceH, 4);
+                gfx.lineStyle(2, 0xffaa00, 1);
+                gfx.strokeRoundedRect(startX, cy, choiceW, choiceH, 4);
+
+                // Add "TASK REWARD" tag
+                const rewardTag = this.add.text(startX + choiceW - 100, cy + choiceH / 2, '⭐ REWARD', {
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    color: '#ffaa00',
+                    fontStyle: 'bold'
+                });
+                rewardTag.setOrigin(0.5, 0.5);
+                rewardTag.setScrollFactor(0);
+                rewardTag.setDepth(11);
+            } else {
+                gfx.fillStyle(0x1a2a3a, 0.85);
+                gfx.fillRoundedRect(startX, cy, choiceW, choiceH, 4);
+                gfx.lineStyle(1, 0x3a5a7a, 1);
+                gfx.strokeRoundedRect(startX, cy, choiceW, choiceH, 4);
+            }
 
             // Number badge
+            const badgeColor = isReward ? '#ffaa00' : '#4488cc';
             const badge = this.add.text(startX + 12, cy + choiceH / 2, `${i + 1}`, {
                 fontSize: '13px',
                 fontFamily: 'monospace',
-                color: '#4488cc',
+                color: badgeColor,
                 fontStyle: 'bold'
             });
             badge.setOrigin(0, 0.5);
@@ -288,10 +292,11 @@ export class DialogueScene extends Scene {
             badge.setDepth(11);
 
             // Choice text
+            const textColor = isReward ? '#ffdd88' : '#cccccc';
             const text = this.add.text(startX + 34, cy + choiceH / 2, choice.text, {
                 fontSize: '12px',
                 fontFamily: '"Courier New", monospace',
-                color: '#cccccc',
+                color: textColor,
                 wordWrap: { width: choiceW - 50 },
                 lineSpacing: 2
             });
@@ -315,7 +320,9 @@ export class DialogueScene extends Scene {
             });
 
             hitZone.on('pointerdown', () => {
-                EventBus.emit('player-choice', choice);
+                if (!isReward) {
+                    EventBus.emit('player-choice', { ...choice, characterId: this.currentData?.characterId });
+                }
                 this._closeDialogue();
             });
 
@@ -335,6 +342,64 @@ export class DialogueScene extends Scene {
     }
 
     // ══════════════════════
+    //  DEBUG TASKS (Right)
+    // ══════════════════════
+    _drawDebugTasks(activeTasks, blockedTasks) {
+        const startX = 580;
+        let startY = 150;
+
+        const gfx = this.add.graphics();
+        gfx.setScrollFactor(0);
+        gfx.setDepth(20);
+        gfx.fillStyle(0x000000, 0.7);
+        gfx.fillRect(startX - 10, startY - 10, 220, 400);
+
+        this.add.text(startX, startY, 'DEBUG: TASKS TO LLM', {
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            color: '#ffdd00',
+            fontStyle: 'bold'
+        }).setDepth(21).setScrollFactor(0);
+
+        startY += 20;
+
+        this.add.text(startX, startY, `Active Tasks (${activeTasks.length}):`, {
+            fontSize: '11px',
+            fontFamily: 'monospace',
+            color: '#88ff88',
+        }).setDepth(21).setScrollFactor(0);
+        startY += 15;
+
+        activeTasks.forEach(t => {
+            this.add.text(startX + 10, startY, `- ${t.id}\nCond: ${t.completion_condition}`, {
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                color: '#ffffff',
+                wordWrap: { width: 190 }
+            }).setDepth(21).setScrollFactor(0);
+            startY += 30;
+        });
+
+        startY += 10;
+        this.add.text(startX, startY, `Blocked Tasks (${blockedTasks.length}):`, {
+            fontSize: '11px',
+            fontFamily: 'monospace',
+            color: '#ff8888',
+        }).setDepth(21).setScrollFactor(0);
+        startY += 15;
+
+        blockedTasks.forEach(t => {
+            this.add.text(startX + 10, startY, `- ${t.id}\nMissing: ${t.missing_titles?.join(',')}`, {
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                color: '#bbbbbb',
+                wordWrap: { width: 190 }
+            }).setDepth(21).setScrollFactor(0);
+            startY += 30;
+        });
+    }
+
+    // ══════════════════════
     //  UPDATE SELECTION
     // ══════════════════════
     _updateSelection() {
@@ -344,20 +409,36 @@ export class DialogueScene extends Scene {
 
         this.choiceElements.forEach((el, i) => {
             el.gfx.clear();
+            const choiceW = 680;
+            const choiceH = 44;
+            const isReward = this.currentData?.completed_task_id != null && this.currentData?.player_choices?.length === 1;
+
             if (i === this.selectedIndex) {
-                el.gfx.fillStyle(0x2a4a6a, 0.95);
+                if (isReward) {
+                    el.gfx.fillStyle(0x4a3a1a, 0.95);
+                    el.gfx.lineStyle(3, 0xffcc00, 1);
+                } else {
+                    el.gfx.fillStyle(0x2a4a6a, 0.95);
+                    el.gfx.lineStyle(2, 0x66aaee, 1);
+                }
                 el.gfx.fillRoundedRect(startX, el.cy, choiceW, choiceH, 4);
-                el.gfx.lineStyle(2, 0x66aaee, 1);
                 el.gfx.strokeRoundedRect(startX, el.cy, choiceW, choiceH, 4);
-                el.badge.setColor('#ffdd57');
+                el.badge.setColor('#ffffff');
                 el.text.setColor('#ffffff');
             } else {
-                el.gfx.fillStyle(0x1a2a3a, 0.85);
+                if (isReward) {
+                    el.gfx.fillStyle(0x3a2a1a, 0.95);
+                    el.gfx.lineStyle(2, 0xffaa00, 1);
+                    el.badge.setColor('#ffaa00');
+                    el.text.setColor('#ffdd88');
+                } else {
+                    el.gfx.fillStyle(0x1a2a3a, 0.85);
+                    el.gfx.lineStyle(1, 0x3a5a7a, 1);
+                    el.badge.setColor('#4488cc');
+                    el.text.setColor('#cccccc');
+                }
                 el.gfx.fillRoundedRect(startX, el.cy, choiceW, choiceH, 4);
-                el.gfx.lineStyle(1, 0x3a5a7a, 1);
                 el.gfx.strokeRoundedRect(startX, el.cy, choiceW, choiceH, 4);
-                el.badge.setColor('#4488cc');
-                el.text.setColor('#cccccc');
             }
         });
     }

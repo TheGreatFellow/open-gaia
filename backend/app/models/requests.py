@@ -51,6 +51,14 @@ class NPCDialogueRequest(BaseModel):
     trust_level: int = Field(ge=0, le=100)
     trust_threshold: int = Field(ge=0, le=100)
     dialogue_tree: DialogueTree
+    active_tasks: list[dict] = Field(
+        default=[],
+        description="List of currently active tasks assigned to this NPC"
+    )
+    blocked_tasks: list[dict] = Field(
+        default=[],
+        description="List of blocked tasks missing prerequisites"
+    )
     player_choice_index: int = Field(ge=0, le=2)
     player_choice_text: str
     conversation_history: list[dict] = Field(default_factory=list)

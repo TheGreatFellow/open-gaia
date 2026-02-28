@@ -430,6 +430,13 @@ export class WorldScene extends Scene {
         // ─── EventBus ───
         this._onDialogueClosed = () => { this.canInteract = true; };
         EventBus.on('dialogue-closed', this._onDialogueClosed);
+
+        this._onDialogueReady = (data) => {
+            // data contains the API response + characterId
+            this.scene.launch('DialogueScene', data);
+        };
+        EventBus.on('dialogue-ready', this._onDialogueReady);
+
         this._onLoadLocation = (newData) => { this.scene.restart(newData); };
         EventBus.on('load-location', this._onLoadLocation);
 
@@ -619,7 +626,8 @@ export class WorldScene extends Scene {
                 const charId = npc ? npc.getData('characterId') : 'unknown';
                 const charName = npc ? npc.getData('characterName') : 'NPC';
 
-                this.scene.launch('DialogueScene');
+                // We only emit the interact event. GameShell handles the API call
+                // and will emit 'dialogue-ready' when data arrives.
                 EventBus.emit('npc-interact', {
                     characterId: charId,
                     characterName: charName
@@ -630,6 +638,7 @@ export class WorldScene extends Scene {
 
     shutdown() {
         if (this._onDialogueClosed) EventBus.off('dialogue-closed', this._onDialogueClosed);
+        if (this._onDialogueReady) EventBus.off('dialogue-ready', this._onDialogueReady);
         if (this._onLoadLocation) EventBus.off('load-location', this._onLoadLocation);
     }
 }

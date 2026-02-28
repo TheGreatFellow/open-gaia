@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Optional, List, Dict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.game_bible import GameBible
 
@@ -47,6 +47,7 @@ class NPCDialogueResponse(BaseModel):
     player_choices: list[PlayerChoice]
     blocked: bool = False
     blocked_reason: str = ""
+    completed_task_id: str | None = Field(default=None, description="ID of the task completed in this turn, if any")
 
 class GeneratePortraitResponse(BaseModel):
     """Returned by POST /api/generate-portrait"""

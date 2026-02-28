@@ -58,6 +58,8 @@ async def npc_dialogue(request: NPCDialogueRequest):
         "last_player_message":   request.player_choice_text,
         "required_items":        request.required_items,
         "player_inventory":      request.player_inventory,
+        "active_tasks":          request.active_tasks,
+        "blocked_tasks":         request.blocked_tasks,
     }
 
     # First contact vs ongoing conversation
@@ -105,14 +107,56 @@ async def npc_dialogue(request: NPCDialogueRequest):
         {"index": 1, "text": "Tell me more.", "trust_hint": 5},
         {"index": 2, "text": "Never mind.", "trust_hint": -5},
     ])
-    player_choices = [
-        PlayerChoice(
-            index=opt.get("index", i),
-            text=opt.get("text", "..."),
-            trust_hint=opt.get("trust_hint", 0),
-        )
-        for i, opt in enumerate(raw_choices[:3])
-    ]
+    completed_task_id = data.get("completed_task_id")
+    
+    # Strict Validation: Only allow completion of explicitly active tasks
+    is_valid_task = False
+    hallucinated_task = False
+    if completed_task_id:
+        active_ids = [t.get("id") for t in request.active_tasks]
+        if completed_task_id in active_ids:
+            is_valid_task = True
+        else:
+            logger.warning(f"LLM hallucinated task completion for blocked or unknown task: {completed_task_id}")
+            completed_task_id = None
+            hallucinated_task = True
+            
+            # Identify if it was a blocked task to make the warning more specific
+            blocked_task_info = next((t for t in request.blocked_tasks if t.get("id") == data.get("completed_task_id")), None)
+            if blocked_task_info:
+                missing_str = ", ".join(blocked_task_info.get("missing_titles", []))
+                data["npc_response"] = f"Do not waste my time. You cannot help me with '{blocked_task_info.get('title')}' until you have taken care of: {missing_str}."
+            else:
+                data["npc_response"] = "I am not interested in discussing this further. Please leave."
+            
+            final_delta = 0
+            data["emotion"] = "hostile"
+
+    if is_valid_task:
+        player_choices = [
+            PlayerChoice(
+                index=0,
+                text="[Accept Reward and Leave]",
+                trust_hint=0
+            )
+        ]
+    elif hallucinated_task:
+        player_choices = [
+            PlayerChoice(
+                index=0,
+                text="[Leave]",
+                trust_hint=0
+            )
+        ]
+    else:
+        player_choices = [
+            PlayerChoice(
+                index=opt.get("index", i),
+                text=opt.get("text", "..."),
+                trust_hint=opt.get("trust_hint", 0),
+            )
+            for i, opt in enumerate(raw_choices[:3])
+        ]
 
     return NPCDialogueResponse(
         npc_response=data.get("npc_response", "..."),
@@ -120,6 +164,7 @@ async def npc_dialogue(request: NPCDialogueRequest):
         new_trust_level=new_trust,
         is_convinced=is_convinced,
         emotion=data.get("emotion", "neutral"),
+        completed_task_id=completed_task_id,
         player_choices=player_choices,
         blocked=False,
         blocked_reason="",
