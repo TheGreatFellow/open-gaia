@@ -192,10 +192,24 @@ export class WorldScene extends Scene {
                     tilewidth: 32,
                     tileheight: 32,
                     layers: [
-                        { name: 'ground', type: 'tilelayer', width: mapData.width, height: mapData.height, data: mapData.ground },
-                        { name: 'collision', type: 'tilelayer', width: mapData.width, height: mapData.height, data: new Array(mapData.width * mapData.height).fill(0) },
                         {
-                            name: 'objects', type: 'objectgroup', objects: [
+                            name: 'ground',
+                            type: 'tilelayer',
+                            width: mapData.width,
+                            height: mapData.height,
+                            data: mapData.ground
+                        },
+                        {
+                            name: 'collision',
+                            type: 'tilelayer',
+                            width: mapData.width,
+                            height: mapData.height,
+                            data: new Array(mapData.width * mapData.height).fill(0)
+                        },
+                        {
+                            name: 'objects',
+                            type: 'objectgroup',
+                            objects: [
                                 { name: 'player_start', x: mapData.playerStart.x, y: mapData.playerStart.y, width: 32, height: 32 },
                                 { name: 'npc_spawn_1', x: mapData.npcSpawn.x, y: mapData.npcSpawn.y, width: 32, height: 32 }
                             ]
@@ -220,9 +234,33 @@ export class WorldScene extends Scene {
             return;
         }
 
+        this.bible = bible;
         this.locations = this.buildLocationsFromBible(bible);
         this.protagonist = bible.characters.find(c => c.role === 'protagonist');
         this.startLocationId = bible.story_graph.acts[0]?.location_id || Object.keys(this.locations)[0];
+
+        // Sync completed tasks from React via EventBus
+        if (!this._syncHandler) {
+            this._completedTasks = [];
+            this._syncHandler = (tasks) => {
+                const oldTasks = this._completedTasks;
+                this._completedTasks = tasks || [];
+
+                // If new tasks were completed, re-allow story intro for newly-unlocked locations
+                if (this._completedTasks.length > oldTasks.length && this.bible) {
+                    const acts = this.bible.story_graph.acts;
+                    for (const act of acts) {
+                        const prevAct = acts.find(a => a.act_number === act.act_number - 1);
+                        if (!prevAct) continue;
+                        const allDone = (prevAct.tasks_in_act || []).every(tid => this._completedTasks.includes(tid));
+                        if (allDone) {
+                            this.visitedLocations.delete(act.location_id);
+                        }
+                    }
+                }
+            };
+            EventBus.on('sync-completed-tasks', this._syncHandler);
+        }
 
         const locId = (data && data.locationId) ? data.locationId : this.startLocationId;
         const locData = this.locations[locId];
@@ -234,6 +272,23 @@ export class WorldScene extends Scene {
         this._transitioning = false;
         this.canInteract = true;
         this._introActive = false;
+
+        // ─── Background music (play once, persists across scene restarts) ───
+        if (!WorldScene._musicStarted && this.sound.context) {
+            const music = this.sound.add('bgMusic', { loop: true, volume: 0.3 });
+            // Browsers require user interaction before audio — resume on first input
+            this.input.once('pointerdown', () => {
+                if (this.sound.context.state === 'suspended') {
+                    this.sound.context.resume();
+                }
+                if (!music.isPlaying) music.play();
+            });
+            // Also try playing immediately (works if autoplay is allowed)
+            try {
+                music.play();
+            } catch (e) { /* will play on first click */ }
+            WorldScene._musicStarted = true;
+        }
 
         const map = locData.tileMap;
         const cols = map.width;
@@ -456,6 +511,33 @@ export class WorldScene extends Scene {
 
     // ─── STORY INTRO TYPEWRITER ───
     showStoryIntro(locData) {
+        // Check if act is locked or already completed BEFORE drawing anything
+        if (locData.storyAct) {
+            const actNum = locData.storyAct.actNumber;
+            const acts = this.bible.story_graph.acts;
+            const currentAct = acts.find(a => a.act_number === actNum);
+            const prevAct = acts.find(a => a.act_number === actNum - 1);
+            const completed = this._completedTasks || [];
+
+            // Skip if previous act's tasks aren't done (locked)
+            if (prevAct) {
+                const prevTaskIds = prevAct.tasks_in_act || [];
+                const actLocked = prevTaskIds.some(tid => !completed.includes(tid));
+                if (actLocked) {
+                    return;
+                }
+            }
+
+            // Skip if current act's tasks are ALL already completed
+            if (currentAct) {
+                const currentTaskIds = currentAct.tasks_in_act || [];
+                const allDone = currentTaskIds.length > 0 && currentTaskIds.every(tid => completed.includes(tid));
+                if (allDone) {
+                    return;
+                }
+            }
+        }
+
         this._introActive = true;
         this.player.body.setVelocity(0, 0);
 
@@ -476,9 +558,10 @@ export class WorldScene extends Scene {
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 2
         }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51);
 
-        // Act title (if available)
+        // Act title
         let actTitle = null;
         let fullText = locData.locationDescription || '';
+
         if (locData.storyAct) {
             actTitle = this.add.text(cx, cy - 75, `ACT ${locData.storyAct.actNumber}: ${locData.storyAct.title}`, {
                 fontSize: '16px', fontFamily: 'monospace', color: '#ffd700',
