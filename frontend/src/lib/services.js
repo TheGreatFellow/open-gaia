@@ -2,7 +2,7 @@ import api from './api';
 import MOCK_GENERATE_WORLD_RESPONSE from '../data/mockGameBible';
 
 // ── Feature flag: flip to false to use the real backend ─────
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // ── World Generation ───────────────────────────────
 
@@ -24,6 +24,47 @@ export async function generateWorld(story, endGoal) {
         story,
         end_goal: endGoal,
     });
+    return data;
+}
+
+// ── Bibles Listing & Retrieving ─────────────────────
+
+/**
+ * GET /api/bibles
+ * Returns an array of game bible summaries.
+ */
+export async function getBibles() {
+    // If mocking, return our single mock item as a summary
+    if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 400));
+        return {
+            bibles: [
+                {
+                    id: 'mock-123',
+                    title: MOCK_GENERATE_WORLD_RESPONSE.game_bible.world.title,
+                    setting: MOCK_GENERATE_WORLD_RESPONSE.game_bible.world.setting,
+                    tone: MOCK_GENERATE_WORLD_RESPONSE.game_bible.world.tone,
+                    end_goal: MOCK_GENERATE_WORLD_RESPONSE.game_bible.world.end_goal,
+                    created_at: new Date().toISOString(),
+                }
+            ]
+        };
+    }
+    const { data } = await api.get('/bibles');
+    return data;
+}
+
+/**
+ * GET /api/bibles/:id
+ * Returns a specific game bible by its ID.
+ */
+export async function getBibleById(id) {
+    if (USE_MOCK) {
+        await new Promise((r) => setTimeout(r, 400));
+        // We only have one mock item, return it regardless of ID
+        return MOCK_GENERATE_WORLD_RESPONSE;
+    }
+    const { data } = await api.get(`/bibles/${id}`);
     return data;
 }
 
