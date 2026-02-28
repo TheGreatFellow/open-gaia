@@ -13,6 +13,7 @@ import {
 } from '../components/ui/card'
 import { generateWorld } from '../lib/services'
 import { useGameStore } from '../stores/useGameStore'
+import { LoadingScreen } from '../components/LoadingScreen'
 
 export default function CreateWorld() {
     const [story, setStory] = useState('')
@@ -35,9 +36,12 @@ export default function CreateWorld() {
             navigate('/')
         } catch (err) {
             setError(err.response?.data?.detail || err.message || 'Something went wrong')
-        } finally {
             setLoading(false)
         }
+    }
+
+    if (loading) {
+        return <LoadingScreen />
     }
 
     return (
