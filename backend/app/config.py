@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     # ── Redis ────────────────────────────────────────
     redis_url: str = os.getenv("REDIS_URL")
 
+    # ── MongoDB ─────────────────────────────────────
+    mongodb_url: str = os.getenv("MONGODB_URL")
+    mongodb_db_name: str = os.getenv("MONGODB_DB_NAME")
     # ── Server ───────────────────────────────────────
     port: int = os.getenv("PORT")
     frontend_origin: str = os.getenv("FRONTEND_ORIGIN")
