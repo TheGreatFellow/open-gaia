@@ -288,6 +288,23 @@ export class WorldScene extends Scene {
         this.canInteract = true;
         this._introActive = false;
 
+        // ─── Background music (play once, persists across scene restarts) ───
+        if (!WorldScene._musicStarted && this.sound.context) {
+            const music = this.sound.add('bgMusic', { loop: true, volume: 0.3 });
+            // Browsers require user interaction before audio — resume on first input
+            this.input.once('pointerdown', () => {
+                if (this.sound.context.state === 'suspended') {
+                    this.sound.context.resume();
+                }
+                if (!music.isPlaying) music.play();
+            });
+            // Also try playing immediately (works if autoplay is allowed)
+            try {
+                music.play();
+            } catch (e) { /* will play on first click */ }
+            WorldScene._musicStarted = true;
+        }
+
         const map = locData.tileMap;
         const cols = map.width;
         const rows = map.height;
