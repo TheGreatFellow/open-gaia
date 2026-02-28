@@ -1,6 +1,7 @@
 import { Scene } from 'phaser';
 import manPng from '../../assets/sprites/man.png';
 import zombiePng from '../../assets/sprites/zombie.png';
+import basechipPng from '../../assets/tilesets/basechip.png';
 
 export class BootScene extends Scene {
     constructor() {
@@ -15,6 +16,11 @@ export class BootScene extends Scene {
         this.load.spritesheet('zombie', zombiePng, {
             frameWidth: 64,
             frameHeight: 64
+        });
+        // Tileset: 256×4256 = 8 cols × 133 rows = 1064 frames
+        this.load.spritesheet('basechip', basechipPng, {
+            frameWidth: 32,
+            frameHeight: 32
         });
     }
 
