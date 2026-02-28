@@ -54,7 +54,8 @@ class NPCDialogueRequest(BaseModel):
     player_choice_index: int = Field(ge=0, le=2)
     player_choice_text: str
     conversation_history: list[dict] = Field(default_factory=list)
-
+    required_items: List[str] = []
+    player_inventory: List[str] = []
 
 class GeneratePortraitRequest(BaseModel):
     """POST /api/generate-portrait"""

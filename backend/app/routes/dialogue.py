@@ -26,6 +26,24 @@ TRUST_DELTA_MAP = {0: 20, 1: 5, 2: -10}
 @router.post("/npc-dialogue", response_model=NPCDialogueResponse)
 async def npc_dialogue(request: NPCDialogueRequest):
 
+    # If player is missing required items, return immediate refusal.
+    if request.required_items:
+        missing = [
+            item for item in request.required_items
+            if item not in request.player_inventory
+        ]
+        if missing:
+            missing_str = ", ".join(missing)
+            return NPCDialogueResponse(
+                npc_response    = f"{request.character_name} glances at you, then looks away. They don't seem ready to talk.",
+                trust_delta     = 0,
+                new_trust_level = request.trust_level,
+                is_convinced    = False,
+                emotion         = "neutral",
+                player_choices  = [],
+                blocked         = True,
+                blocked_reason  = f"You need the following before {request.character_name} will engage: {missing_str}",
+            )
     # Build character context dict for prompt builder
     character = {
         "name":                  request.character_name,
@@ -38,6 +56,8 @@ async def npc_dialogue(request: NPCDialogueRequest):
         "trust_threshold":       request.trust_threshold,
         "dialogue_tree":         request.dialogue_tree.model_dump(),
         "last_player_message":   request.player_choice_text,
+        "required_items":        request.required_items,
+        "player_inventory":      request.player_inventory,
     }
 
     # First contact vs ongoing conversation
@@ -101,4 +121,6 @@ async def npc_dialogue(request: NPCDialogueRequest):
         is_convinced=is_convinced,
         emotion=data.get("emotion", "neutral"),
         player_choices=player_choices,
+        blocked=False,
+        blocked_reason="",
     )

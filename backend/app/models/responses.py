@@ -45,7 +45,8 @@ class NPCDialogueResponse(BaseModel):
     is_convinced: bool
     emotion: str  # happy | neutral | angry | suspicious | grateful
     player_choices: list[PlayerChoice]
-
+    blocked: bool = False
+    blocked_reason: str = ""
 
 class GeneratePortraitResponse(BaseModel):
     """Returned by POST /api/generate-portrait"""

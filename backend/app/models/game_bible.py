@@ -53,6 +53,7 @@ class Character(BaseModel):
     sprite_prompt: str  # FLUX prompt for sprite generation
     portrait_prompt: str  # FLUX prompt for dialogue portrait
     dialogue_tree: DialogueTree
+    required_items: list[str] = Field(default_factory=list)  # Items player must have before NPC engages
 
 
 class Task(BaseModel):

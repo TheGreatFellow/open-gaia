@@ -71,6 +71,7 @@ OUTPUT SCHEMA
         "Specific trigger tied to their fear or desire"
       ],
       "trust_threshold": <integer 30-90>,
+      "required_items": ["item_id from a previous task's reward that this NPC needs before engaging"],
       "movement_style": "How they move when idle — specific and visual",
       "sprite_prompt": "pixel art RPG sprite, [visual description], front-facing, full body, transparent background, 64x64, 16-bit style",
       "portrait_prompt": "pixel art RPG portrait, [visual description], close-up face and shoulders, detailed expression, 64x64, 16-bit style",
@@ -113,6 +114,7 @@ CORRECT OUTPUT:
         "Player IS Yuna — no convincing needed"
       ],
       "trust_threshold": 0,
+      "required_items": [],
       "movement_style": "walks quickly with purpose, occasionally glances over shoulder",
       "sprite_prompt": "pixel art RPG sprite, woman late 30s, worn field jacket, short dark hair, intense expression, carrying data tablet, front-facing, full body, transparent background, 64x64, 16-bit style",
       "portrait_prompt": "pixel art RPG portrait, woman late 30s, worn field jacket, short dark hair, intense focused eyes, close-up face and shoulders, determined expression, 64x64, 16-bit style",
@@ -138,6 +140,7 @@ CORRECT OUTPUT:
         "Admit that Yuna forgives him for leaving the institute — he needs to hear that before he can act"
       ],
       "trust_threshold": 78,
+      "required_items": [],
       "movement_style": "stands stiffly, glances at exits, wrings hands when idle",
       "sprite_prompt": "pixel art RPG sprite, man mid 40s, expensive rumpled corporate suit, bloodshot anxious eyes, shaking posture, front-facing, full body, transparent background, 64x64, 16-bit style",
       "portrait_prompt": "pixel art RPG portrait, man mid 40s, rumpled corporate suit, bloodshot eyes, guilty desperate expression, sweat on brow, close-up face and shoulders, 64x64, 16-bit style",
@@ -163,6 +166,7 @@ CORRECT OUTPUT:
         "Tell him his own grandchildren's names and where they go to school — let him sit with what he's protecting"
       ],
       "trust_threshold": 85,
+      "required_items": ["cold_storage_drive"],
       "movement_style": "stands perfectly still, turns head slowly to scan the room",
       "sprite_prompt": "pixel art RPG sprite, man 50s, fitted black security uniform, silver close-cropped hair, cold calculating expression, military posture, front-facing, full body, transparent background, 64x64, 16-bit style",
       "portrait_prompt": "pixel art RPG portrait, man 50s, black security uniform, silver hair, cold unreadable eyes, perfectly composed expression, close-up face and shoulders, 64x64, 16-bit style",
