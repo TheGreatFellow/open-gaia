@@ -223,45 +223,6 @@ export class WorldScene extends Scene {
         return locations;
     }
 
-    const LOCATIONS = buildLocationsFromBible();
-    const PROTAGONIST = BIBLE.characters.find(c => c.role === 'protagonist');
-
-// Track completed tasks (synced from React via EventBus)
-let _completedTasks = [];
-EventBus.on('sync-completed-tasks', (tasks) => {
-    const oldTasks = _completedTasks;
-    _completedTasks = tasks || [];
-
-    // If new tasks were completed, re-allow story intro for newly-unlocked locations
-    if (_completedTasks.length > oldTasks.length) {
-        const acts = BIBLE.story_graph.acts;
-        for (const act of acts) {
-            const prevAct = acts.find(a => a.act_number === act.act_number - 1);
-            if (!prevAct) continue;
-            // If previous act's tasks are now ALL completed, clear visited for this act's location
-            const allDone = (prevAct.tasks_in_act || []).every(tid => _completedTasks.includes(tid));
-            if (allDone) {
-                visitedLocations.delete(act.location_id);
-            }
-        }
-    }
-});
-const START_LOCATION_ID = BIBLE.story_graph.acts[0]?.location_id || Object.keys(LOCATIONS)[0];
-
-// Track which locations the player has visited (for story intro)
-const visitedLocations = new Set();
-
-// ═══════════════════════════════════════════
-//  WORLD SCENE — driven by game bible
-// ═══════════════════════════════════════════
-export class WorldScene extends Scene {
-    constructor() {
-        super('WorldScene');
-        this.lastDirection = 'down';
-        this.canInteract = true;
-        this._transitioning = false;
-    }
-
     create(data) {
         const bible = this.registry.get('gameBible');
         if (!bible) {
@@ -273,9 +234,33 @@ export class WorldScene extends Scene {
             return;
         }
 
+        this.bible = bible;
         this.locations = this.buildLocationsFromBible(bible);
         this.protagonist = bible.characters.find(c => c.role === 'protagonist');
         this.startLocationId = bible.story_graph.acts[0]?.location_id || Object.keys(this.locations)[0];
+
+        // Sync completed tasks from React via EventBus
+        if (!this._syncHandler) {
+            this._completedTasks = [];
+            this._syncHandler = (tasks) => {
+                const oldTasks = this._completedTasks;
+                this._completedTasks = tasks || [];
+
+                // If new tasks were completed, re-allow story intro for newly-unlocked locations
+                if (this._completedTasks.length > oldTasks.length && this.bible) {
+                    const acts = this.bible.story_graph.acts;
+                    for (const act of acts) {
+                        const prevAct = acts.find(a => a.act_number === act.act_number - 1);
+                        if (!prevAct) continue;
+                        const allDone = (prevAct.tasks_in_act || []).every(tid => this._completedTasks.includes(tid));
+                        if (allDone) {
+                            this.visitedLocations.delete(act.location_id);
+                        }
+                    }
+                }
+            };
+            EventBus.on('sync-completed-tasks', this._syncHandler);
+        }
 
         const locId = (data && data.locationId) ? data.locationId : this.startLocationId;
         const locData = this.locations[locId];
@@ -529,14 +514,15 @@ export class WorldScene extends Scene {
         // Check if act is locked or already completed BEFORE drawing anything
         if (locData.storyAct) {
             const actNum = locData.storyAct.actNumber;
-            const acts = BIBLE.story_graph.acts;
+            const acts = this.bible.story_graph.acts;
             const currentAct = acts.find(a => a.act_number === actNum);
             const prevAct = acts.find(a => a.act_number === actNum - 1);
+            const completed = this._completedTasks || [];
 
             // Skip if previous act's tasks aren't done (locked)
             if (prevAct) {
                 const prevTaskIds = prevAct.tasks_in_act || [];
-                const actLocked = prevTaskIds.some(tid => !_completedTasks.includes(tid));
+                const actLocked = prevTaskIds.some(tid => !completed.includes(tid));
                 if (actLocked) {
                     return;
                 }
@@ -545,7 +531,7 @@ export class WorldScene extends Scene {
             // Skip if current act's tasks are ALL already completed
             if (currentAct) {
                 const currentTaskIds = currentAct.tasks_in_act || [];
-                const allDone = currentTaskIds.length > 0 && currentTaskIds.every(tid => _completedTasks.includes(tid));
+                const allDone = currentTaskIds.length > 0 && currentTaskIds.every(tid => completed.includes(tid));
                 if (allDone) {
                     return;
                 }
