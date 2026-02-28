@@ -50,6 +50,28 @@ def build_npc_dialogue_prompt(character: dict, conversation_history: list) -> tu
         for i, trigger in enumerate(character["convincing_triggers"])
     ])
 
+    # Evidence block — injected into prompt only if NPC requires items
+    required_items   = character.get("required_items", [])
+    player_inventory = character.get("player_inventory", [])
+    if required_items:
+        missing = [i for i in required_items if i not in player_inventory]
+        has_all = len(missing) == 0
+        if has_all:
+            evidence_block = "The player HAS everything you need. You may proceed normally."
+        else:
+            missing_str = ", ".join(missing)
+            evidence_block = (
+                f"The player is MISSING: {missing_str}\n"
+                "  You know they don't have what you need yet.\n"
+                "  Do not engage with their request. Refer to what they are missing\n"
+                "  in a way that fits your character — don't list items mechanically.\n"
+                "  Example: if you need 'sector_7_data', say something like\n"
+                "  'Come back when you have something real to show me.'\n"
+                "  Keep trust_delta at 0. Do not generate player_choices."
+            )
+    else:
+        evidence_block = "No specific evidence required — proceed normally."
+
     system_prompt = f"""You are roleplaying as {character['name']} in an RPG game.
 Stay completely in character. You do not know you are in a game.
 
@@ -65,6 +87,9 @@ If the player's message touches ANY of these, give trust_delta of 15-25.
 If it touches NONE of these, give trust_delta of 0-8 or negative.
 
 {triggers_text}
+
+EVIDENCE YOU ARE WAITING FOR
+{evidence_block}
 
 YOUR CURRENT STATE
   Trust progress : {trust_level} out of {trust_threshold} needed
@@ -154,6 +179,25 @@ def build_first_contact_prompt(character: dict) -> tuple:
         for i, trigger in enumerate(character["convincing_triggers"])
     ])
 
+    # Evidence block — same logic as ongoing dialogue
+    required_items   = character.get("required_items", [])
+    player_inventory = character.get("player_inventory", [])
+    if required_items:
+        missing = [i for i in required_items if i not in player_inventory]
+        if len(missing) == 0:
+            evidence_block = "The player HAS everything you need. You may proceed normally."
+        else:
+            missing_str = ", ".join(missing)
+            evidence_block = (
+                f"The player is MISSING: {missing_str}\n"
+                "  You know they don't have what you need yet.\n"
+                "  Do not engage with their request. Refer to what they are missing\n"
+                "  in a way that fits your character — don't list items mechanically.\n"
+                "  Keep trust_delta at 0. Do not generate player_choices."
+            )
+    else:
+        evidence_block = "No specific evidence required — proceed normally."
+
     system_prompt = f"""You are roleplaying as {character['name']} in an RPG game.
 A player has just approached you for the first time.
 Stay completely in character. You do not know you are in a game.
@@ -172,6 +216,9 @@ YOUR OPENING TONE
 WHAT WOULD EVENTUALLY MAKE YOU COOPERATE
   Design the player choices to naturally hint at these without being obvious:
 {triggers_text}
+
+EVIDENCE YOU ARE WAITING FOR
+{evidence_block}
 
 PLAYER CHOICES
   choice_0 → Hints at a convincing trigger naturally. trust_hint: 15-20

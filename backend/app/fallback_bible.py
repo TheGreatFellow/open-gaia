@@ -214,7 +214,7 @@ FALLBACK_GAME_BIBLE: dict = {
             "description": "A once-grand town square now cracked and overgrown. Market stalls stand empty. The library is the only building with light.",
             "terrain_type": "cracked cobblestone with overgrown weeds",
             "background_prompt": "pixel art RPG background, crumbling medieval town square at dusk, cracked cobblestone, overgrown weeds, empty market stalls, single lit library window, fog rolling in, faded banners, no characters, no text, 16-bit style, 1280x720",
-            "tile_map_prompt": "20x15 tile map, town square layout, cobblestone walkable center area, broken stall obstacles at edges, library building at top center, fountain structure in middle, overgrown areas as soft obstacles, spawn points: player_start at south gate, npc_spawn_1 at library for char_aldric, npc_spawn_2 at market stalls for char_grimshaw",
+            "tile_map_prompt": "64x64 tile map, town square layout, cobblestone walkable center area, broken stall obstacles at edges, library building at top center, fountain structure in middle, overgrown areas as soft obstacles, spawn points: player_start at south gate, npc_spawn_1 at library for char_aldric, npc_spawn_2 at market stalls for char_grimshaw",
             "movement_profile": {
                 "speed": 110,
                 "friction": 0.8,
@@ -236,7 +236,7 @@ FALLBACK_GAME_BIBLE: dict = {
             "description": "A sheltered corner of the market where Grimshaw has set up his travelling shop. Lanterns hang from ropes. Everything is for sale — at his price.",
             "terrain_type": "packed dirt with scattered straw",
             "background_prompt": "pixel art RPG background, medieval market corner at dusk, hanging lanterns, travelling merchant's stall with colorful goods, packed dirt floor, straw scattered, warm lantern light, fog at edges, no characters, no text, 16-bit style, 1280x720",
-            "tile_map_prompt": "20x15 tile map, small market area, dirt walkable floor, merchant stall as large obstacle at center-right, crate and barrel obstacles around edges, lantern posts, spawn points: player_start at left entry, npc_spawn_1 at merchant stall for char_grimshaw",
+            "tile_map_prompt": "64x64 tile map, small market area, dirt walkable floor, merchant stall as large obstacle at center-right, crate and barrel obstacles around edges, lantern posts, spawn points: player_start at left entry, npc_spawn_1 at merchant stall for char_grimshaw",
             "movement_profile": {
                 "speed": 100,
                 "friction": 0.6,
@@ -257,7 +257,7 @@ FALLBACK_GAME_BIBLE: dict = {
             "description": "Ancient trees block the sky. The path is barely visible. The forest feels alive and hostile — branches move without wind.",
             "terrain_type": "dense forest floor with roots and mud",
             "background_prompt": "pixel art RPG background, dark ancient forest at dusk, massive gnarled trees, barely visible path, roots crossing ground, mist between trees, faint eerie glow from distant shrine, no characters, no text, 16-bit style, 1280x720",
-            "tile_map_prompt": "20x15 tile map, dense forest, narrow winding walkable paths between tree obstacles, root obstacles across paths, clearing at right side for shrine, mushrooms and rocks as small obstacles, spawn points: player_start at left edge path entry, npc_spawn_1 at forest clearing for char_elena",
+            "tile_map_prompt": "64x64 tile map, dense forest, narrow winding walkable paths between tree obstacles, root obstacles across paths, clearing at right side for shrine, mushrooms and rocks as small obstacles, spawn points: player_start at left edge path entry, npc_spawn_1 at forest clearing for char_elena",
             "movement_profile": {
                 "speed": 65,
                 "friction": 0.5,
@@ -278,7 +278,7 @@ FALLBACK_GAME_BIBLE: dict = {
             "description": "Crumbling stone corridors beneath the castle. Water drips from the ceiling. The walls groan. This place is collapsing — slowly, but unstoppably.",
             "terrain_type": "wet crumbling stone with standing water",
             "background_prompt": "pixel art RPG background, medieval dungeon corridor, crumbling stone walls, standing water on floor, dripping ceiling, dim torch sconces, rubble piles, oppressive darkness beyond torchlight, no characters, no text, 16-bit style, 1280x720",
-            "tile_map_prompt": "20x15 tile map, dungeon corridor layout, stone walkable paths, rubble obstacles blocking some corridors, standing water tiles in low areas, torch sconces on walls, collapsed section at top as impassable obstacle, crystal chamber at far end, spawn points: player_start at entry stairs bottom-left",
+            "tile_map_prompt": "64x64 tile map, dungeon corridor layout, stone walkable paths, rubble obstacles blocking some corridors, standing water tiles in low areas, torch sconces on walls, collapsed section at top as impassable obstacle, crystal chamber at far end, spawn points: player_start at entry stairs bottom-left",
             "movement_profile": {
                 "speed": 55,
                 "friction": 0.4,
@@ -297,7 +297,7 @@ FALLBACK_GAME_BIBLE: dict = {
             "description": "The grand throne room, half in ruins. Morvaine sits on the cracked throne, the final crystal pulsing in her hand. Torn banners hang from the ceiling.",
             "terrain_type": "cracked marble floor with debris",
             "background_prompt": "pixel art RPG background, ruined medieval castle throne room, cracked marble floor, half-collapsed columns, single intact throne at far end, torn royal banners, pulsing crystal glow, dramatic shadows, no characters, no text, 16-bit style, 1280x720",
-            "tile_map_prompt": "20x15 tile map, throne room, wide marble walkable center aisle, collapsed column obstacles on sides, throne platform at top center, debris piles as small obstacles, crystal pedestal near throne, spawn points: player_start at grand door bottom center, npc_spawn_1 at throne for char_morvaine",
+            "tile_map_prompt": "64x64 tile map, throne room, wide marble walkable center aisle, collapsed column obstacles on sides, throne platform at top center, debris piles as small obstacles, crystal pedestal near throne, spawn points: player_start at grand door bottom center, npc_spawn_1 at throne for char_morvaine",
             "movement_profile": {
                 "speed": 90,
                 "friction": 0.7,
