@@ -5,5 +5,33 @@ export const useGameStore = create((set) => ({
     setGamePhase: (phase) => set({ gamePhase: phase }),
 
     gameBible: null,
-    setGameBible: (bible) => set({ gameBible: bible }),
+    completedTasks: [],
+    completeTask: (taskId) => set((state) => ({
+        completedTasks: [...new Set([...state.completedTasks, taskId])]
+    })),
+    setGameBible: (bible) => set((state) => {
+        // Initialize npcStates for all characters from the new bible
+        const newNpcStates = {}
+        if (bible?.characters) {
+            bible.characters.forEach(char => {
+                newNpcStates[char.id] = {
+                    trust_level: 0,
+                    is_convinced: false,
+                    conversation_history: []
+                }
+            })
+        }
+        return { gameBible: bible, npcStates: newNpcStates }
+    }),
+
+    npcStates: {},
+    updateNpcState: (characterId, updates) => set((state) => ({
+        npcStates: {
+            ...state.npcStates,
+            [characterId]: {
+                ...state.npcStates[characterId],
+                ...updates
+            }
+        }
+    })),
 }))

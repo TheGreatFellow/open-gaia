@@ -1,9 +1,11 @@
 import { useGameStore } from '../stores/useGameStore'
 import { Button } from './ui/button'
 import { Link } from 'react-router-dom'
+import MOCK_GENERATE_WORLD_RESPONSE from '../data/mockGameBible'
 
 export function StoryInput() {
     const setGamePhase = useGameStore((state) => state.setGamePhase)
+    const setGameBible = useGameStore((state) => state.setGameBible)
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-neutral-950 text-neutral-50 px-4 text-center">
@@ -24,7 +26,10 @@ export function StoryInput() {
                 <div className="pt-8">
                     <Button
                         variant="ghost"
-                        onClick={() => setGamePhase('playing')}
+                        onClick={() => {
+                            setGameBible(MOCK_GENERATE_WORLD_RESPONSE.game_bible)
+                            setGamePhase('playing')
+                        }}
                         size="sm"
                         className="text-neutral-500 hover:text-neutral-300"
                     >
