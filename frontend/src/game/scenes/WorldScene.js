@@ -1,5 +1,6 @@
 import { Scene } from 'phaser';
 import { EventBus } from '../EventBus';
+import MOCK_GENERATE_WORLD_RESPONSE from '../../data/mockGameBible';
 
 // ═══════════════════════════════════════════════════════════
 //  TILE FRAME REFERENCE (basechip.png — 8 cols × 133 rows)
@@ -14,197 +15,215 @@ import { EventBus } from '../EventBus';
 //  Row  70+:  Furniture (560+)
 // ═══════════════════════════════════════════════════════════
 
-// ─── LOCATION 1: Research Station (outdoor + building) ───
-const LOC_RESEARCH_STATION = {
-    locationId: "loc_research_station",
-    locationName: "Research Station",
-    moveSpeed: 120,
-    cameraShake: false,
-    connectedLocations: ["loc_docks"],
-    tileMap: {
-        width: 25,
-        height: 19,
-        tilewidth: 32,
-        tileheight: 32,
-        layers: [
-            {
-                name: "ground",
-                type: "tilelayer",
-                width: 25,
-                height: 19,
-                // 0=grass, 1=wall, 3=door floor, 4=interior floor
-                // 5=dirt path, 6=water, 7=water edge
-                data: [
-                    // Row 0 — top border grass + scattered trees
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    // Row 1
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    // Row 2 — lake starts
-                    0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    // Row 3
-                    0, 0, 6, 6, 6, 6, 6, 0, 0, 0, 0, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    // Row 4 — lake + dirt path to room
-                    0, 0, 6, 6, 6, 6, 0, 0, 0, 0, 0, 5, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-                    // Row 5
-                    0, 0, 0, 6, 6, 0, 0, 0, 0, 0, 0, 5, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 6
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 7
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 8 — open lawn
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 9 — path leads to door
-                    0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 3, 3, 3, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 10
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 3, 3, 3, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 11
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 12
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 13
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 14
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 15
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 4, 4, 4, 1, 0,
-                    // Row 16 — room bottom wall
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
-                    // Row 17
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    // Row 18
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                ]
-            },
-            {
-                name: "collision",
-                type: "tilelayer",
-                width: 25,
-                height: 19,
-                data: [
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-                ]
-            },
-            {
-                name: "objects",
-                type: "objectgroup",
-                objects: [
-                    { name: "player_start", x: 160, y: 288, width: 32, height: 32 },
-                    { name: "npc_spawn_1", x: 576, y: 320, width: 32, height: 32 }
-                ]
-            }
-        ]
-    },
-    characters: [
-        {
-            characterId: "wren", characterName: "WREN",
-            spawnX: 576, spawnY: 320, spriteKey: "zombie",
-            patrol: { axis: 'y', distance: 5 * 32, speed: 40 }
-        }
-    ],
-    tileFrames: {
-        0: 73,    // grass — row 9, lush green grass
-        1: 344,   // wall — row 43, gray stone bricks
-        2: 113,   // obstacle — row 14, wooden fence
-        3: 73,    // door floor — grass (no collision)
-        4: 456,   // interior floor — row 57, wood planks
-        5: 82,    // dirt path — row 10, sandy path
-        6: 59,    // water — row 7, actual blue water
-        7: 58     // water edge — row 7, water border
-    }
+const BIBLE = MOCK_GENERATE_WORLD_RESPONSE.game_bible;
+
+// ─── Map templates for different terrain types ───
+// Each returns { groundData, tileFrames, playerStart, npcSpawn }
+function generateResearchStationMap() {
+    const W = 25, H = 19;
+    // 0=metal floor, 1=wall, 3=door, 4=interior, 5=corridor, 6=dark
+    const ground = [
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 5, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 5, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 5, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 5, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 5, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 5, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 5, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5,
+        1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+        1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+        1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5,
+        1, 5, 5, 5, 5, 5, 5, 6, 6, 6, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 6, 6, 6, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 6, 6, 6, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 6, 6, 6, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 6, 6, 6, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 5, 5, 5, 5, 5, 5, 6, 6, 6, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    ];
+    return {
+        width: W, height: H,
+        ground,
+        tileFrames: {
+            0: 456,   // metal floor
+            1: 344,   // stone wall
+            3: 456,   // door (same as floor, no collision)
+            4: 448,   // interior archive room
+            5: 456,   // corridor
+            6: 440    // dark storage
+        },
+        playerStart: { x: 96, y: 320 },
+        npcSpawn: { x: 560, y: 112 }
+    };
+}
+
+function generateOceanRouteMap() {
+    const W = 25, H = 19;
+    // 0=water, 5=dock planks, 8=sand
+    const ground = [
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8,
+        8, 8, 8, 8, 8, 8, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 8, 8, 8, 8, 8, 8,
+        8, 8, 8, 8, 8, 8, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 8, 8, 8, 8, 8, 8,
+        5, 5, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 8, 8, 8, 8, 5, 5,
+        5, 5, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 8, 8, 8, 8, 5, 5,
+        5, 5, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 8, 8, 8, 8, 5, 5,
+        5, 5, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 8, 8, 8, 8, 5, 5,
+        5, 5, 8, 8, 8, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 8, 8, 8, 8, 5, 5,
+        8, 8, 8, 8, 8, 8, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 8, 8, 8, 8, 8, 8,
+        8, 8, 8, 8, 8, 8, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 8, 8, 8, 8, 8, 8,
+        8, 8, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 8, 8, 8,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    ];
+    return {
+        width: W, height: H,
+        ground,
+        tileFrames: {
+            0: 59,    // water
+            5: 137,   // dock planks
+            8: 82     // sand/beach
+        },
+        playerStart: { x: 96, y: 288 },
+        npcSpawn: { x: 400, y: 288 }
+    };
+}
+
+function generateIslandMap() {
+    const W = 25, H = 19;
+    // 0=grass, 1=wall(hut), 2=tree, 3=door, 4=interior, 8=sand, 9=water, 10=rock
+    const ground = [
+        9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+        9, 9, 9, 9, 9, 9, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9,
+        9, 9, 9, 8, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 9, 9, 9, 9,
+        9, 9, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 9, 9, 9,
+        9, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 9, 9,
+        9, 8, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 8, 9, 9,
+        9, 8, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 1, 0, 0, 0, 0, 0, 8, 9, 9,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 1, 0, 0, 0, 0, 0, 8, 9, 9,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 4, 4, 4, 4, 1, 0, 0, 0, 0, 0, 8, 9, 9,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 4, 4, 4, 4, 1, 0, 0, 0, 0, 0, 8, 9, 9,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 1, 0, 0, 0, 0, 0, 8, 9, 9,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 8, 9, 9,
+        9, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 9, 9,
+        9, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 9, 9,
+        9, 9, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 9, 9, 9,
+        9, 9, 9, 8, 8, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 8, 9, 9, 9, 9,
+        9, 9, 9, 9, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9,
+        9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+        9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9
+    ];
+    return {
+        width: W, height: H,
+        ground,
+        tileFrames: {
+            0: 73,    // grass
+            1: 344,   // hut walls
+            3: 73,    // door (grass, no collision)
+            4: 456,   // interior floor
+            8: 82,    // sand
+            9: 59,    // ocean water
+            10: 344   // rocky
+        },
+        playerStart: { x: 160, y: 448 },
+        npcSpawn: { x: 416, y: 256 }
+    };
+}
+
+// ─── Map generators by location ID ───
+const MAP_GENERATORS = {
+    'loc_research_station': generateResearchStationMap,
+    'loc_ocean_route': generateOceanRouteMap,
+    'loc_okafor_island': generateIslandMap
 };
 
-// ─── LOCATION 2: Docks ───
-const LOC_DOCKS = {
-    locationId: "loc_docks",
-    locationName: "Harbor Docks",
-    moveSpeed: 100,
-    cameraShake: false,
-    connectedLocations: ["loc_research_station"],
-    tileMap: {
-        width: 25,
-        height: 19,
-        tilewidth: 32,
-        tileheight: 32,
-        layers: [
-            {
-                name: "ground",
-                type: "tilelayer",
-                width: 25,
-                height: 19,
-                // 0=grass, 5=wooden dock planks, 6=water, 1=wall
-                data: [
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-                    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6
-                ]
-            },
-            {
-                name: "collision",
-                type: "tilelayer",
-                width: 25,
-                height: 19,
-                data: new Array(475).fill(0)
-            },
-            {
-                name: "objects",
-                type: "objectgroup",
-                objects: [
-                    { name: "player_start", x: 384, y: 320, width: 32, height: 32 }
-                ]
-            }
-        ]
-    },
-    characters: [],
-    tileFrames: {
-        0: 73,    // grass
-        1: 344,   // wall
-        5: 137,   // dock planks — row 17, colored floor tile
-        6: 55     // water
-    }
-};
+// ─── Build LOCATIONS registry from game bible ───
+function buildLocationsFromBible() {
+    const locations = {};
+    for (const loc of BIBLE.locations) {
+        const gen = MAP_GENERATORS[loc.id];
+        if (!gen) continue;
+        const mapData = gen();
 
-// Location registry
-const LOCATIONS = {
-    "loc_research_station": LOC_RESEARCH_STATION,
-    "loc_docks": LOC_DOCKS
-};
+        // Find NPCs for this location
+        const chars = (loc.npcs_present || []).map(npcId => {
+            const charDef = BIBLE.characters.find(c => c.id === npcId);
+            if (!charDef) return null;
+            return {
+                characterId: charDef.id,
+                characterName: charDef.name,
+                spawnX: mapData.npcSpawn.x,
+                spawnY: mapData.npcSpawn.y,
+                spriteKey: 'zombie',
+                role: charDef.role,
+                patrol: { axis: 'y', distance: 4 * 32, speed: 35 }
+            };
+        }).filter(Boolean);
+
+        // Find the story act for this location
+        const act = BIBLE.story_graph.acts.find(a => a.location_id === loc.id);
+
+        locations[loc.id] = {
+            locationId: loc.id,
+            locationName: loc.name,
+            locationDescription: loc.description,
+            moveSpeed: loc.movement_profile?.speed || 100,
+            cameraShake: loc.movement_profile?.camera_shake || false,
+            connectedLocations: loc.connected_to || [],
+            storyAct: act ? { title: act.title, description: act.description, actNumber: act.act_number } : null,
+            tileMap: {
+                width: mapData.width,
+                height: mapData.height,
+                tilewidth: 32,
+                tileheight: 32,
+                layers: [
+                    {
+                        name: 'ground',
+                        type: 'tilelayer',
+                        width: mapData.width,
+                        height: mapData.height,
+                        data: mapData.ground
+                    },
+                    {
+                        name: 'collision',
+                        type: 'tilelayer',
+                        width: mapData.width,
+                        height: mapData.height,
+                        data: new Array(mapData.width * mapData.height).fill(0)
+                    },
+                    {
+                        name: 'objects',
+                        type: 'objectgroup',
+                        objects: [
+                            { name: 'player_start', x: mapData.playerStart.x, y: mapData.playerStart.y, width: 32, height: 32 },
+                            { name: 'npc_spawn_1', x: mapData.npcSpawn.x, y: mapData.npcSpawn.y, width: 32, height: 32 }
+                        ]
+                    }
+                ]
+            },
+            characters: chars,
+            tileFrames: mapData.tileFrames
+        };
+    }
+    return locations;
+}
+
+const LOCATIONS = buildLocationsFromBible();
+const PROTAGONIST = BIBLE.characters.find(c => c.role === 'protagonist');
+const START_LOCATION_ID = BIBLE.story_graph.acts[0]?.location_id || Object.keys(LOCATIONS)[0];
+
+// Track which locations the player has visited (for story intro)
+const visitedLocations = new Set();
 
 // ═══════════════════════════════════════════
-//  WORLD SCENE — fully data-driven
+//  WORLD SCENE — driven by game bible
 // ═══════════════════════════════════════════
 export class WorldScene extends Scene {
     constructor() {
@@ -215,17 +234,22 @@ export class WorldScene extends Scene {
     }
 
     create(data) {
-        // Use passed data, or fall back to test data
-        const locData = (data && data.locationId) ? data : LOC_RESEARCH_STATION;
+        const locId = (data && data.locationId) ? data.locationId : START_LOCATION_ID;
+        const locData = LOCATIONS[locId];
+        if (!locData) {
+            console.error(`Location ${locId} not found!`);
+            return;
+        }
         this.locationData = locData;
         this._transitioning = false;
         this.canInteract = true;
+        this._introActive = false;
 
         const map = locData.tileMap;
         const cols = map.width;
         const rows = map.height;
-        const tw = map.tilewidth;   // 32
-        const th = map.tileheight;  // 32
+        const tw = map.tilewidth;
+        const th = map.tileheight;
         const worldW = cols * tw;
         const worldH = rows * th;
 
@@ -235,10 +259,9 @@ export class WorldScene extends Scene {
 
         // ─── Find layers ───
         const groundLayer = map.layers.find(l => l.name === 'ground');
-        const collisionLayer = map.layers.find(l => l.name === 'collision');
         const objectsLayer = map.layers.find(l => l.name === 'objects');
 
-        // ─── Render ground layer with tileset frames ───
+        // ─── Render ground layer ───
         this.wallBodies = [];
         this.waterBodies = [];
         if (groundLayer) {
@@ -247,80 +270,55 @@ export class WorldScene extends Scene {
                 const x = (i % cols) * tw + tw / 2;
                 const y = Math.floor(i / cols) * th + th / 2;
 
-                // Render tile image from basechip spritesheet
-                const frame = locData.tileFrames[tileVal] ?? locData.tileFrames[0];
+                const frame = locData.tileFrames[tileVal] ?? locData.tileFrames[0] ?? 73;
                 this.add.image(x, y, 'basechip', frame);
 
-                // Wall tiles (value 1) get collision
+                // Walls (1) get collision
                 if (tileVal === 1) {
-                    const wallRect = this.add.rectangle(x, y, tw, th);
-                    wallRect.setVisible(false);
-                    this.physics.add.existing(wallRect, true);
-                    this.wallBodies.push(wallRect);
+                    const rect = this.add.rectangle(x, y, tw, th).setVisible(false);
+                    this.physics.add.existing(rect, true);
+                    this.wallBodies.push(rect);
                 }
-
-                // Water tiles (value 6) block player
-                if (tileVal === 6) {
-                    const waterRect = this.add.rectangle(x, y, tw, th);
-                    waterRect.setVisible(false);
-                    this.physics.add.existing(waterRect, true);
-                    this.waterBodies.push(waterRect);
+                // Water (0 in ocean/island contexts or 9) blocks player
+                if (tileVal === 9 || (locId === 'loc_ocean_route' && tileVal === 0)) {
+                    const rect = this.add.rectangle(x, y, tw, th).setVisible(false);
+                    this.physics.add.existing(rect, true);
+                    this.waterBodies.push(rect);
                 }
             }
         }
 
-        // ─── Render collision layer (obstacles) ───
-        this.collisionBodies = [];
-        if (collisionLayer) {
-            for (let i = 0; i < collisionLayer.data.length; i++) {
-                const tileVal = collisionLayer.data[i];
-                if (tileVal === 2) {
-                    const x = (i % cols) * tw + tw / 2;
-                    const y = Math.floor(i / cols) * th + th / 2;
-
-                    const frame = locData.tileFrames[2] ?? 113;
-                    this.add.image(x, y, 'basechip', frame);
-
-                    const body = this.add.rectangle(x, y, tw, th);
-                    body.setVisible(false);
-                    this.physics.add.existing(body, true);
-                    this.collisionBodies.push(body);
-                }
-            }
-        }
-
-        // ─── Find player spawn from objects layer ───
-        let playerX = worldW / 2;
-        let playerY = worldH / 2;
+        // ─── Player spawn ───
+        let playerX = worldW / 2, playerY = worldH / 2;
         if (objectsLayer) {
-            const playerObj = objectsLayer.objects.find(o => o.name === 'player_start');
-            if (playerObj) {
-                playerX = playerObj.x + (playerObj.width || tw) / 2;
-                playerY = playerObj.y + (playerObj.height || th) / 2;
-            }
+            const ps = objectsLayer.objects.find(o => o.name === 'player_start');
+            if (ps) { playerX = ps.x + 16; playerY = ps.y + 16; }
         }
 
         // ─── Place player sprite ───
         this.player = this.physics.add.sprite(playerX, playerY, 'man', 18);
         this.player.setCollideWorldBounds(true);
-        this.player.body.setSize(24, 24);      // Smaller hitbox so player fits through doors
-        this.player.body.setOffset(20, 36);     // Center the hitbox at feet
+        this.player.body.setSize(24, 24);
+        this.player.body.setOffset(20, 36);
 
-        // Player collides with walls
-        for (const wall of this.wallBodies) {
-            this.physics.add.collider(this.player, wall);
-        }
-        // Player collides with water
-        for (const water of this.waterBodies) {
-            this.physics.add.collider(this.player, water);
-        }
-        // Player collides with obstacles
-        for (const body of this.collisionBodies) {
-            this.physics.add.collider(this.player, body);
-        }
+        // ─── Player name label (GOLD) ───
+        const protagonistName = PROTAGONIST ? PROTAGONIST.name : 'Hero';
+        this.playerLabel = this.add.text(playerX, playerY - 40, protagonistName, {
+            fontSize: '11px',
+            fontFamily: 'monospace',
+            color: '#ffd700',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5, 1).setDepth(15);
 
-        // ─── Place NPC characters from data ───
+        // Collisions
+        for (const wall of this.wallBodies) { this.physics.add.collider(this.player, wall); }
+        for (const water of this.waterBodies) { this.physics.add.collider(this.player, water); }
+
+        // ─── Place NPC characters ───
         this.npcs = [];
+        this.npcLabels = [];
         for (const charData of locData.characters) {
             const npc = this.physics.add.sprite(charData.spawnX, charData.spawnY, charData.spriteKey, 18);
             npc.body.setImmovable(true);
@@ -329,27 +327,33 @@ export class WorldScene extends Scene {
             npc.setData('characterId', charData.characterId);
             npc.setData('characterName', charData.characterName);
 
-            // Play idle animation
-            const animKey = `${charData.spriteKey}-walk-down`;
-            if (this.anims.exists(animKey)) {
-                npc.anims.play(animKey);
-            }
+            // NPC name label (RED)
+            const label = this.add.text(charData.spawnX, charData.spawnY - 40, charData.characterName, {
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                color: '#ff4444',
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 3
+            }).setOrigin(0.5, 1).setDepth(15);
+            this.npcLabels.push({ npc, label });
 
-            // Patrol setup — NPC walks up and down ~5 tiles
+            // Idle animation
+            const animKey = `${charData.spriteKey}-walk-down`;
+            if (this.anims.exists(animKey)) { npc.anims.play(animKey); }
+
+            // Patrol setup
             if (charData.patrol) {
                 npc.setData('patrolOriginY', charData.spawnY);
                 npc.setData('patrolDistance', charData.patrol.distance);
                 npc.setData('patrolSpeed', charData.patrol.speed);
-                npc.setData('patrolDir', 1); // 1 = moving down, -1 = moving up
+                npc.setData('patrolDir', 1);
                 npc.setData('isPatrolling', true);
-                npc.setData('playerNearby', false);
             }
 
-            // Collide player with NPC body
             this.physics.add.collider(this.player, npc);
 
-            // Interaction zone — LARGER than sprite so player can trigger it
-            // 120×120 zone around NPC center
+            // Interaction zone
             const zone = this.add.zone(charData.spawnX, charData.spawnY, 120, 120);
             this.physics.add.existing(zone, true);
             npc.interactZone = zone;
@@ -357,62 +361,56 @@ export class WorldScene extends Scene {
             this.npcs.push(npc);
         }
 
-        // ─── Exit zones from connected locations ───
+        // ─── Exit zones ───
+        // Determine direction based on location order in the game bible
+        const locOrder = BIBLE.locations.map(l => l.id);
+        const currentIdx = locOrder.indexOf(locData.locationId);
+
         this.exitZones = [];
-        const exitPositions = [
-            // First connection → right edge
-            { x: worldW - 8, y: worldH / 2, w: 32, h: 300, arrow: '→', edge: 'right' },
-            // Second connection → left edge
-            { x: 8, y: worldH / 2, w: 32, h: 300, arrow: '←', edge: 'left' },
-            // Third connection → top edge
-            { x: worldW / 2, y: 8, w: 300, h: 32, arrow: '↑', edge: 'top' }
-        ];
+        const rightExit = { x: worldW - 8, y: worldH / 2, w: 32, h: 300, arrow: '→' };
+        const leftExit = { x: 8, y: worldH / 2, w: 32, h: 300, arrow: '←' };
 
         if (locData.connectedLocations) {
-            locData.connectedLocations.forEach((connId, i) => {
-                if (i >= exitPositions.length) return;
-                const pos = exitPositions[i];
+            locData.connectedLocations.forEach((connId) => {
+                const destIdx = locOrder.indexOf(connId);
+                // If destination is later in the story → right edge (forward)
+                // If destination is earlier → left edge (back)
+                const pos = (destIdx > currentIdx) ? rightExit : leftExit;
 
-                // Exit zone
                 const exitZone = this.add.zone(pos.x, pos.y, pos.w, pos.h);
                 this.physics.add.existing(exitZone, true);
 
-                // Yellow arrow indicator
-                const arrow = this.add.text(pos.x, pos.y, pos.arrow, {
-                    fontSize: '24px',
-                    fontFamily: 'monospace',
-                    color: '#ffdd57',
-                    fontStyle: 'bold',
-                    stroke: '#000000',
-                    strokeThickness: 3
-                });
-                arrow.setOrigin(0.5, 0.5);
-                arrow.setDepth(5);
+                // Find destination name
+                const destLoc = LOCATIONS[connId];
+                const destName = destLoc ? destLoc.locationName : connId;
 
-                // Pulsing animation on arrow
+                // Arrow + destination label
+                const arrow = this.add.text(pos.x, pos.y - 12, pos.arrow, {
+                    fontSize: '22px', fontFamily: 'monospace', color: '#ffdd57',
+                    fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
+                }).setOrigin(0.5, 0.5).setDepth(5).setScrollFactor(0);
+
+                const destLabel = this.add.text(pos.x, pos.y + 10, destName, {
+                    fontSize: '9px', fontFamily: 'monospace', color: '#ffdd57',
+                    stroke: '#000000', strokeThickness: 2
+                }).setOrigin(0.5, 0.5).setDepth(5).setScrollFactor(0);
+
                 this.tweens.add({
-                    targets: arrow,
+                    targets: [arrow, destLabel],
                     alpha: { from: 1, to: 0.3 },
-                    duration: 800,
-                    yoyo: true,
-                    repeat: -1
+                    duration: 800, yoyo: true, repeat: -1
                 });
 
-                // Overlap detection → transition
                 this.physics.add.overlap(this.player, exitZone, () => {
                     if (this._transitioning) return;
                     this._transitioning = true;
-
-                    // Look up destination data
-                    const destData = LOCATIONS[connId];
-                    if (destData) {
-                        // Brief fade out
+                    const dest = LOCATIONS[connId];
+                    if (dest) {
                         this.cameras.main.fadeOut(300, 0, 0, 0);
                         this.cameras.main.once('camerafadeoutcomplete', () => {
-                            this.scene.restart(destData);
+                            this.scene.restart(dest);
                         });
                     } else {
-                        console.warn(`Location ${connId} not found in registry`);
                         this._transitioning = false;
                     }
                 });
@@ -421,80 +419,140 @@ export class WorldScene extends Scene {
             });
         }
 
-        // ─── Camera follows player ───
+        // ─── Camera ───
         this.cameras.main.startFollow(this.player);
         this.cameras.main.fadeIn(300, 0, 0, 0);
-
-        // ─── Location name toast ───
-        const nameText = this.add.text(400, 30, locData.locationName.toUpperCase(), {
-            fontSize: '16px',
-            fontFamily: 'monospace',
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 4,
-            fontStyle: 'bold'
-        });
-        nameText.setOrigin(0.5, 0.5);
-        nameText.setScrollFactor(0);
-        nameText.setDepth(10);
-        nameText.setAlpha(0);
-
-        // Fade in location name, then fade out
-        this.tweens.add({
-            targets: nameText,
-            alpha: { from: 0, to: 1 },
-            duration: 500,
-            hold: 1500,
-            yoyo: true,
-            onComplete: () => nameText.destroy()
-        });
 
         // ─── Input ───
         this.cursors = this.input.keyboard.createCursorKeys();
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-        // ─── EventBus listeners ───
-        this._onDialogueClosed = () => {
-            this.canInteract = true;
-        };
+        // ─── EventBus ───
+        this._onDialogueClosed = () => { this.canInteract = true; };
         EventBus.on('dialogue-closed', this._onDialogueClosed);
-
-        this._onLoadLocation = (newData) => {
-            this.scene.restart(newData);
-        };
+        this._onLoadLocation = (newData) => { this.scene.restart(newData); };
         EventBus.on('load-location', this._onLoadLocation);
 
-        console.log(`WorldScene loaded: ${locData.locationName} (${cols}×${rows}, ${tw}px tiles)`);
+        // ─── Story intro (first visit only) ───
+        if (!visitedLocations.has(locId)) {
+            visitedLocations.add(locId);
+            this.showStoryIntro(locData);
+        }
+
+        console.log(`WorldScene: ${locData.locationName} (${cols}×${rows})`);
+    }
+
+    // ─── STORY INTRO TYPEWRITER ───
+    showStoryIntro(locData) {
+        this._introActive = true;
+        this.player.body.setVelocity(0, 0);
+
+        const cam = this.cameras.main;
+        const cx = cam.width / 2;
+        const cy = cam.height / 2;
+
+        // Dark overlay box
+        const box = this.add.rectangle(cx, cy, 700, 260, 0x0a0a1a, 0.92)
+            .setScrollFactor(0).setDepth(50);
+        const border = this.add.rectangle(cx, cy, 700, 260)
+            .setScrollFactor(0).setDepth(50)
+            .setStrokeStyle(2, 0x44aaff);
+
+        // Location name
+        const locName = this.add.text(cx, cy - 100, locData.locationName.toUpperCase(), {
+            fontSize: '14px', fontFamily: 'monospace', color: '#44aaff',
+            fontStyle: 'bold', stroke: '#000000', strokeThickness: 2
+        }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51);
+
+        // Act title (if available)
+        let actTitle = null;
+        let fullText = locData.locationDescription || '';
+        if (locData.storyAct) {
+            actTitle = this.add.text(cx, cy - 75, `ACT ${locData.storyAct.actNumber}: ${locData.storyAct.title}`, {
+                fontSize: '16px', fontFamily: 'monospace', color: '#ffd700',
+                fontStyle: 'bold', stroke: '#000000', strokeThickness: 2
+            }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51);
+            fullText = locData.storyAct.description;
+        }
+
+        // Typewriter text
+        const textObj = this.add.text(cx - 320, cy - 45, '', {
+            fontSize: '12px', fontFamily: 'monospace', color: '#ccddee',
+            wordWrap: { width: 640 }, lineSpacing: 6
+        }).setScrollFactor(0).setDepth(51);
+
+        // Hint
+        const hint = this.add.text(cx, cy + 110, '[ SPACE to skip ]', {
+            fontSize: '10px', fontFamily: 'monospace', color: '#667788'
+        }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51);
+
+        const allParts = [box, border, locName, textObj, hint];
+        if (actTitle) allParts.push(actTitle);
+
+        // Typewriter effect
+        let charIndex = 0;
+        const typeSpeed = 30; // ms per char
+        const typeTimer = this.time.addEvent({
+            delay: typeSpeed,
+            repeat: fullText.length - 1,
+            callback: () => {
+                charIndex++;
+                textObj.setText(fullText.substring(0, charIndex));
+            }
+        });
+
+        // Skip with space
+        const skipHandler = () => {
+            if (this._introActive) {
+                typeTimer.remove(false);
+                textObj.setText(fullText);
+                dismissIntro();
+            }
+        };
+
+        const dismissIntro = () => {
+            if (!this._introActive) return;
+            this._introActive = false;
+            this.spaceKey.off('down', skipHandler);
+
+            this.tweens.add({
+                targets: allParts,
+                alpha: 0,
+                duration: 500,
+                onComplete: () => {
+                    allParts.forEach(p => p.destroy());
+                }
+            });
+        };
+
+        this.spaceKey.on('down', skipHandler);
+
+        // Auto-dismiss after text completes + 3 seconds
+        this.time.delayedCall(fullText.length * typeSpeed + 3000, () => {
+            dismissIntro();
+        });
     }
 
     update() {
         if (!this.cursors || !this.player || this._transitioning) return;
 
-        const speed = this.locationData?.moveSpeed || 120;
-        let vx = 0;
-        let vy = 0;
-
-        if (this.cursors.left.isDown) {
-            vx = -speed;
-            this.lastDirection = 'left';
-        } else if (this.cursors.right.isDown) {
-            vx = speed;
-            this.lastDirection = 'right';
+        // Block movement during intro
+        if (this._introActive) {
+            this.player.body.setVelocity(0, 0);
+            // Update label positions even while frozen
+            this.playerLabel.setPosition(this.player.x, this.player.y - 40);
+            return;
         }
 
-        if (this.cursors.up.isDown) {
-            vy = -speed;
-            this.lastDirection = 'up';
-        } else if (this.cursors.down.isDown) {
-            vy = speed;
-            this.lastDirection = 'down';
-        }
+        const speed = this.locationData?.moveSpeed || 100;
+        let vx = 0, vy = 0;
 
-        if (vx !== 0 && vy !== 0) {
-            vx /= 1.414;
-            vy /= 1.414;
-        }
+        if (this.cursors.left.isDown) { vx = -speed; this.lastDirection = 'left'; }
+        else if (this.cursors.right.isDown) { vx = speed; this.lastDirection = 'right'; }
+        if (this.cursors.up.isDown) { vy = -speed; this.lastDirection = 'up'; }
+        else if (this.cursors.down.isDown) { vy = speed; this.lastDirection = 'down'; }
 
+        if (vx !== 0 && vy !== 0) { vx /= 1.414; vy /= 1.414; }
         this.player.body.setVelocity(vx, vy);
 
         if (vx !== 0 || vy !== 0) {
@@ -503,20 +561,23 @@ export class WorldScene extends Scene {
             this.player.anims.stop();
         }
 
-        // ─── NPC Patrol logic ───
+        // ─── Update player label position ───
+        this.playerLabel.setPosition(this.player.x, this.player.y - 40);
+
+        // ─── NPC Patrol + label updates ───
         for (const npc of this.npcs) {
+            // Update NPC label
+            const labelEntry = this.npcLabels.find(e => e.npc === npc);
+            if (labelEntry) {
+                labelEntry.label.setPosition(npc.x, npc.y - 40);
+            }
+
             if (!npc.getData('isPatrolling')) continue;
 
-            const dist = Phaser.Math.Distance.Between(
-                this.player.x, this.player.y, npc.x, npc.y
-            );
+            const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, npc.x, npc.y);
 
             if (dist < 150) {
-                // Player is nearby — stop patrolling, face player
                 npc.body.setVelocity(0, 0);
-                npc.setData('playerNearby', true);
-
-                // Face toward the player
                 const dx = this.player.x - npc.x;
                 const dy = this.player.y - npc.y;
                 if (Math.abs(dx) > Math.abs(dy)) {
@@ -525,38 +586,28 @@ export class WorldScene extends Scene {
                     npc.anims.play(dy > 0 ? `${npc.texture.key}-walk-down` : `${npc.texture.key}-walk-up`, true);
                 }
             } else {
-                npc.setData('playerNearby', false);
-
-                // Patrol up/down
                 const originY = npc.getData('patrolOriginY');
                 const patrolDist = npc.getData('patrolDistance');
                 const patrolSpeed = npc.getData('patrolSpeed');
                 let dir = npc.getData('patrolDir');
 
-                // Reverse at patrol limits
-                if (npc.y >= originY + patrolDist / 2) {
-                    dir = -1;
-                    npc.setData('patrolDir', -1);
-                } else if (npc.y <= originY - patrolDist / 2) {
-                    dir = 1;
-                    npc.setData('patrolDir', 1);
-                }
+                if (npc.y >= originY + patrolDist / 2) { dir = -1; npc.setData('patrolDir', -1); }
+                else if (npc.y <= originY - patrolDist / 2) { dir = 1; npc.setData('patrolDir', 1); }
 
                 npc.body.setVelocityY(dir * patrolSpeed);
                 npc.anims.play(
-                    dir > 0 ? `${npc.texture.key}-walk-down` : `${npc.texture.key}-walk-up`,
-                    true
+                    dir > 0 ? `${npc.texture.key}-walk-down` : `${npc.texture.key}-walk-up`, true
                 );
             }
 
-            // Move the interaction zone to follow the NPC
+            // Move interaction zone to follow NPC
             if (npc.interactZone) {
                 npc.interactZone.setPosition(npc.x, npc.y);
                 npc.interactZone.body.reset(npc.x, npc.y);
             }
         }
 
-        // ─── Check NPC interaction ───
+        // ─── NPC interaction ───
         const interactZones = this.npcs.map(n => n.interactZone).filter(Boolean);
         this.physics.overlap(this.player, interactZones, (player, zone) => {
             if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && this.canInteract) {
@@ -578,11 +629,7 @@ export class WorldScene extends Scene {
     }
 
     shutdown() {
-        if (this._onDialogueClosed) {
-            EventBus.off('dialogue-closed', this._onDialogueClosed);
-        }
-        if (this._onLoadLocation) {
-            EventBus.off('load-location', this._onLoadLocation);
-        }
+        if (this._onDialogueClosed) EventBus.off('dialogue-closed', this._onDialogueClosed);
+        if (this._onLoadLocation) EventBus.off('load-location', this._onLoadLocation);
     }
 }
