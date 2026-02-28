@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.routes import world, dialogue, story, portrait
 from app.services.redis_cache import redis_manager
+from app.services.mongo_client import mongo_manager
 
 
 # ── Lifespan: connect / disconnect Redis ────────────
@@ -22,7 +23,9 @@ from app.services.redis_cache import redis_manager
 async def lifespan(application: FastAPI):
     """Startup / shutdown hook."""
     await redis_manager.connect()
+    await mongo_manager.connect()
     yield
+    await mongo_manager.disconnect()
     await redis_manager.disconnect()
 
 
