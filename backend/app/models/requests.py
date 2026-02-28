@@ -2,6 +2,10 @@
 Request body models for all API endpoints.
 """
 
+from __future__ import annotations
+
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -12,8 +16,8 @@ class GenerateWorldRequest(BaseModel):
 
 
 class NPCDialogueRequest(BaseModel):
-    """POST /api/npc-dialogue"""
-    character_id: str
+    """POST /api/npc-dialogue — frontend sends full character data"""
+    character: dict = Field(..., description="Full character object from Game Bible")
     player_input: str
     trust_level: int = Field(ge=0, le=100)
     history: list[dict] = Field(default_factory=list, description="Previous dialogue turns")
@@ -29,3 +33,8 @@ class BranchStoryRequest(BaseModel):
 class GeneratePortraitRequest(BaseModel):
     """POST /api/generate-portrait"""
     portrait_prompt: str = Field(..., description="FLUX prompt for character portrait")
+
+
+class GenerateTileMapRequest(BaseModel):
+    """POST /api/generate-tilemap"""
+    tile_map_prompt: str = Field(..., description="Tile map description from location")

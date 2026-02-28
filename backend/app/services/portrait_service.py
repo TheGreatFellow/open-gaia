@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-Portrait generation via FLUX through the Mistral Agents API.
+Portrait and sprite generation via FLUX through the Mistral Agents API.
 """
 
 import asyncio
@@ -25,9 +25,9 @@ def _get_client() -> Mistral:
     return _client
 
 
-async def generate_portrait(prompt: str) -> str:
+async def generate_image(prompt: str) -> str:
     """
-    Generate a single character portrait using FLUX via Mistral's image
+    Generate a single image using FLUX via Mistral's image
     generation API.  Returns the image URL.
     """
     client = _get_client()
@@ -41,26 +41,33 @@ async def generate_portrait(prompt: str) -> str:
     )
 
     image_url = response.data[0].url
-    logger.info("Portrait generated: %s…", image_url[:80])
+    logger.info("Image generated: %s…", image_url[:80])
     return image_url
 
 
-async def generate_portraits_batch(
+async def _batch_generate(
     characters: list[dict],
+    prompt_field: str,
 ) -> dict[str, str]:
     """
-    Fan-out portrait generation for all characters in parallel.
+    Fan-out image generation for all characters in parallel.
     Returns { character_id: image_url }.
+
+    prompt_field: which field on the character to use as the FLUX prompt
+                  (either "portrait_prompt" or "sprite_prompt")
     """
     async def _gen(char: dict) -> tuple[str, str]:
+        prompt = char.get(prompt_field, "")
+        if not prompt:
+            return char["id"], ""
         try:
-            url = await generate_portrait(char["portrait_prompt"])
+            url = await generate_image(prompt)
             return char["id"], url
         except Exception as exc:
             logger.warning(
-                "Portrait generation failed for %s: %s", char["id"], exc
+                "Image generation failed for %s (%s): %s",
+                char["id"], prompt_field, exc,
             )
-            # Return a placeholder so the game can still run
             return char["id"], ""
 
     results = await asyncio.gather(*[_gen(c) for c in characters])

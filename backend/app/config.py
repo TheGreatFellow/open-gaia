@@ -4,18 +4,19 @@ Centralised configuration — reads from .env file via pydantic-settings.
 
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+import os
 
 
 class Settings(BaseSettings):
     # ── Mistral AI ───────────────────────────────────
-    mistral_api_key: str = ""
+    mistral_api_key: str = os.getenv("MISTRAL_API_KEY")
 
     # ── Redis ────────────────────────────────────────
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = os.getenv("REDIS_URL")
 
     # ── Server ───────────────────────────────────────
-    port: int = 8000
-    frontend_origin: str = "http://localhost:5173"
+    port: int = os.getenv("PORT")
+    frontend_origin: str = os.getenv("FRONTEND_ORIGIN")
 
     model_config = {
         "env_file": ".env",
