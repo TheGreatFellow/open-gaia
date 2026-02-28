@@ -290,7 +290,18 @@ export class WorldScene extends Scene {
 
         // ─── Player spawn ───
         let playerX = worldW / 2, playerY = worldH / 2;
-        if (objectsLayer) {
+
+        // If arriving from another map, spawn near the edge the player entered from
+        if (data && data._arrivalEdge === 'left') {
+            // Arrived from the left edge → spawn on the left side
+            playerX = 48;
+            playerY = worldH / 2;
+        } else if (data && data._arrivalEdge === 'right') {
+            // Arrived from the right edge → spawn on the right side
+            playerX = worldW - 48;
+            playerY = worldH / 2;
+        } else if (objectsLayer) {
+            // Default: use the map's player_start position
             const ps = objectsLayer.objects.find(o => o.name === 'player_start');
             if (ps) { playerX = ps.x + 16; playerY = ps.y + 16; }
         }
@@ -406,9 +417,13 @@ export class WorldScene extends Scene {
                     this._transitioning = true;
                     const dest = LOCATIONS[connId];
                     if (dest) {
+                        // Determine which edge the player will ARRIVE at in the new map
+                        // If exiting right (→), player arrives on the LEFT of the new map
+                        // If exiting left (←), player arrives on the RIGHT of the new map
+                        const arrivalEdge = (pos.arrow === '→') ? 'left' : 'right';
                         this.cameras.main.fadeOut(300, 0, 0, 0);
                         this.cameras.main.once('camerafadeoutcomplete', () => {
-                            this.scene.restart(dest);
+                            this.scene.restart({ ...dest, _arrivalEdge: arrivalEdge });
                         });
                     } else {
                         this._transitioning = false;
