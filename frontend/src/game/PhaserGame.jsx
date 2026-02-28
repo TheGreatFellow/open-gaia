@@ -5,34 +5,47 @@ import { useGameStore } from '../stores/useGameStore';
 
 export const PhaserGame = () => {
     const gameRef = useRef(null);
+    const [ready, setReady] = useState(false);
     const gameBible = useGameStore(state => state.gameBible);
 
+    // Create game once on mount
     useEffect(() => {
-        const onBootReady = () => setReady(true);
-        EventBus.on('boot-complete', onBootReady);
-
         if (!gameRef.current) {
             gameRef.current = StartGame('game-container');
         }
 
-        if (gameRef.current && gameBible) {
-            console.log("PhaserGame injecting gameBible into registry:", {
-                hasLocations: !!gameBible.locations,
-                keys: Object.keys(gameBible),
-                locations: gameBible.locations
-            });
-            gameRef.current.registry.set('gameBible', gameBible);
-            EventBus.emit('bible-updated', gameBible);
-        }
-
         return () => {
-            clearTimeout(fallback);
-            EventBus.off('boot-complete', onBootReady);
             if (gameRef.current) {
                 gameRef.current.destroy(true);
                 gameRef.current = null;
             }
         };
+    }, []);
+
+    // Listen for boot-complete to show canvas
+    useEffect(() => {
+        const onBootReady = () => setReady(true);
+        EventBus.on('boot-complete', onBootReady);
+
+        // Safety fallback — show canvas after 6s no matter what
+        const fallback = setTimeout(() => setReady(true), 6000);
+
+        return () => {
+            clearTimeout(fallback);
+            EventBus.off('boot-complete', onBootReady);
+        };
+    }, []);
+
+    // Inject gameBible into Phaser registry when it changes
+    useEffect(() => {
+        if (gameRef.current && gameBible) {
+            console.log("PhaserGame injecting gameBible into registry:", {
+                hasLocations: !!gameBible.locations,
+                keys: Object.keys(gameBible),
+            });
+            gameRef.current.registry.set('gameBible', gameBible);
+            EventBus.emit('bible-updated', gameBible);
+        }
     }, [gameBible]);
 
     return (
@@ -69,7 +82,6 @@ export const PhaserGame = () => {
                     }}>
                         LOADING WORLD...
                     </span>
-                    {/* Inline keyframes for the spinner */}
                     <style>{`
                         @keyframes spin {
                             0% { transform: rotate(0deg); }
