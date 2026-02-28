@@ -4,8 +4,8 @@ from __future__ import annotations
 Mistral AI service — wraps all three model tiers + tile map generation.
 
 • mistral-large-latest   → 3-step Game Bible generation (JSON mode)
-• mistral-small-latest   → live NPC dialogue
-• magistral-medium-2506  → unexpected story branching (reasoning)
+• mistral-small-latest   → live NPC dialogue (via chat_complete)
+• magistral-medium-2506  → unexpected story branching (via chat_complete)
 """
 
 import json
@@ -19,9 +19,7 @@ from app.prompts.world_builder import (
     WORLD_STEP1_SYSTEM,
     WORLD_STEP2_SYSTEM,
     WORLD_STEP3_SYSTEM,
-    STORY_BRANCH_SYSTEM,
     TILE_MAP_SYSTEM,
-    build_npc_system_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -55,7 +53,7 @@ async def _call_large(system_prompt: str, user_content: str) -> dict:
     return json.loads(response.choices[0].message.content)
 
 
-# ── Generic chat complete (used by dialogue route) ───
+# ── Generic chat complete (used by dialogue + story routes) ───
 
 async def chat_complete(
     model: str,
@@ -67,7 +65,7 @@ async def chat_complete(
     """
     Generic async chat completion helper.
     Returns the raw string content from the model response.
-    Used by the dialogue route with configurable model/temp/json_mode.
+    Used by dialogue and story branch routes with configurable model/temp/json_mode.
     """
     client = _get_client()
 
@@ -174,77 +172,3 @@ async def generate_tile_map(tile_map_prompt: str) -> dict:
     result = await _call_large(TILE_MAP_SYSTEM, tile_map_prompt)
     logger.info("Tile map generated (%d layers)", len(result.get("layers", [])))
     return result
-
-
-# ── NPC dialogue (Mistral Small) ─────────────────────
-
-async def generate_npc_dialogue(
-    character: dict,
-    player_input: str,
-    trust_level: int,
-    history: list[dict],
-) -> dict:
-    """
-    Role-play as the NPC and return:
-      { npc_response, emotion, trust_delta }
-    Uses the dynamic build_npc_system_prompt() from world_builder.py.
-    """
-    client = _get_client()
-
-    # Inject current trust level into character dict for prompt builder
-    char_with_trust = {**character, "trust_level": trust_level}
-    system_prompt = build_npc_system_prompt(char_with_trust)
-
-    messages = [
-        {"role": "system", "content": system_prompt},
-    ]
-
-    # Append dialogue history (last 6 turns for context window)
-    for turn in history[-6:]:
-        messages.append(turn)
-
-    messages.append({"role": "user", "content": player_input})
-
-    response = await client.chat.complete_async(
-        model="mistral-small-latest",
-        response_format={"type": "json_object"},
-        messages=messages,
-    )
-
-    return json.loads(response.choices[0].message.content)
-
-
-# ── Story branching (Magistral Medium) ───────────────
-
-async def handle_story_branch(
-    choice: str,
-    story_state: dict,
-    end_goal: str,
-) -> dict:
-    """
-    Reason about an unexpected player choice and produce
-    the next story beat that steers back toward the end goal.
-
-    Returns: { narrative, consequence, new_scene_description, tasks_affected, steers_toward_goal }
-    """
-    client = _get_client()
-
-    state_summary = json.dumps(story_state, indent=2)
-
-    response = await client.chat.complete_async(
-        model="magistral-medium-2506",
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": STORY_BRANCH_SYSTEM},
-            {
-                "role": "user",
-                "content": (
-                    f"Player's unexpected choice: {choice}\n\n"
-                    f"Current story state:\n{state_summary}\n\n"
-                    f"The story MUST eventually reach this end goal: {end_goal}"
-                ),
-            },
-        ],
-    )
-
-    return json.loads(response.choices[0].message.content)

@@ -4,12 +4,34 @@ Request body models for all API endpoints.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field
 
 from app.models.game_bible import DialogueTree
 
+class CompletedTask(BaseModel):
+    id: str
+    title: str
+    reward: str
+
+class PendingTask(BaseModel):
+    id: str
+    title: str
+    description: str
+    blocking: bool
+
+class NPCState(BaseModel):
+    id: str
+    name: str
+    trust_level: int
+    trust_threshold: int
+    is_convinced: bool
+
+class LocationContext(BaseModel):
+    id: str
+    name: str
+    description: str
 
 class GenerateWorldRequest(BaseModel):
     """POST /api/generate-world"""
@@ -34,13 +56,6 @@ class NPCDialogueRequest(BaseModel):
     conversation_history: list[dict] = Field(default_factory=list)
 
 
-class BranchStoryRequest(BaseModel):
-    """POST /api/branch-story"""
-    choice: str = Field(..., description="The unexpected player choice")
-    story_state: dict = Field(..., description="Current story progress snapshot")
-    end_goal: str
-
-
 class GeneratePortraitRequest(BaseModel):
     """POST /api/generate-portrait"""
     portrait_prompt: str = Field(..., description="FLUX prompt for character portrait")
@@ -49,3 +64,15 @@ class GeneratePortraitRequest(BaseModel):
 class GenerateTileMapRequest(BaseModel):
     """POST /api/generate-tilemap"""
     tile_map_prompt: str = Field(..., description="Tile map description from location")
+
+class StoryBranchRequest(BaseModel):
+    """POST /api/story-branch"""
+    end_goal: str
+    world_tone: str
+    story_so_far: str
+    player_choice: str
+    current_location: LocationContext
+    completed_tasks: List[CompletedTask] = []
+    pending_tasks: List[PendingTask] = []
+    npc_states: List[NPCState] = []
+    player_inventory: List[str] = []
