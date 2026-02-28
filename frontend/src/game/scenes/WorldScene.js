@@ -192,10 +192,24 @@ export class WorldScene extends Scene {
                     tilewidth: 32,
                     tileheight: 32,
                     layers: [
-                        { name: 'ground', type: 'tilelayer', width: mapData.width, height: mapData.height, data: mapData.ground },
-                        { name: 'collision', type: 'tilelayer', width: mapData.width, height: mapData.height, data: new Array(mapData.width * mapData.height).fill(0) },
                         {
-                            name: 'objects', type: 'objectgroup', objects: [
+                            name: 'ground',
+                            type: 'tilelayer',
+                            width: mapData.width,
+                            height: mapData.height,
+                            data: mapData.ground
+                        },
+                        {
+                            name: 'collision',
+                            type: 'tilelayer',
+                            width: mapData.width,
+                            height: mapData.height,
+                            data: new Array(mapData.width * mapData.height).fill(0)
+                        },
+                        {
+                            name: 'objects',
+                            type: 'objectgroup',
+                            objects: [
                                 { name: 'player_start', x: mapData.playerStart.x, y: mapData.playerStart.y, width: 32, height: 32 },
                                 { name: 'npc_spawn_1', x: mapData.npcSpawn.x, y: mapData.npcSpawn.y, width: 32, height: 32 }
                             ]
@@ -207,6 +221,45 @@ export class WorldScene extends Scene {
             };
         }
         return locations;
+    }
+
+    const LOCATIONS = buildLocationsFromBible();
+    const PROTAGONIST = BIBLE.characters.find(c => c.role === 'protagonist');
+
+// Track completed tasks (synced from React via EventBus)
+let _completedTasks = [];
+EventBus.on('sync-completed-tasks', (tasks) => {
+    const oldTasks = _completedTasks;
+    _completedTasks = tasks || [];
+
+    // If new tasks were completed, re-allow story intro for newly-unlocked locations
+    if (_completedTasks.length > oldTasks.length) {
+        const acts = BIBLE.story_graph.acts;
+        for (const act of acts) {
+            const prevAct = acts.find(a => a.act_number === act.act_number - 1);
+            if (!prevAct) continue;
+            // If previous act's tasks are now ALL completed, clear visited for this act's location
+            const allDone = (prevAct.tasks_in_act || []).every(tid => _completedTasks.includes(tid));
+            if (allDone) {
+                visitedLocations.delete(act.location_id);
+            }
+        }
+    }
+});
+const START_LOCATION_ID = BIBLE.story_graph.acts[0]?.location_id || Object.keys(LOCATIONS)[0];
+
+// Track which locations the player has visited (for story intro)
+const visitedLocations = new Set();
+
+// ═══════════════════════════════════════════
+//  WORLD SCENE — driven by game bible
+// ═══════════════════════════════════════════
+export class WorldScene extends Scene {
+    constructor() {
+        super('WorldScene');
+        this.lastDirection = 'down';
+        this.canInteract = true;
+        this._transitioning = false;
     }
 
     create(data) {
@@ -456,6 +509,32 @@ export class WorldScene extends Scene {
 
     // ─── STORY INTRO TYPEWRITER ───
     showStoryIntro(locData) {
+        // Check if act is locked or already completed BEFORE drawing anything
+        if (locData.storyAct) {
+            const actNum = locData.storyAct.actNumber;
+            const acts = BIBLE.story_graph.acts;
+            const currentAct = acts.find(a => a.act_number === actNum);
+            const prevAct = acts.find(a => a.act_number === actNum - 1);
+
+            // Skip if previous act's tasks aren't done (locked)
+            if (prevAct) {
+                const prevTaskIds = prevAct.tasks_in_act || [];
+                const actLocked = prevTaskIds.some(tid => !_completedTasks.includes(tid));
+                if (actLocked) {
+                    return;
+                }
+            }
+
+            // Skip if current act's tasks are ALL already completed
+            if (currentAct) {
+                const currentTaskIds = currentAct.tasks_in_act || [];
+                const allDone = currentTaskIds.length > 0 && currentTaskIds.every(tid => _completedTasks.includes(tid));
+                if (allDone) {
+                    return;
+                }
+            }
+        }
+
         this._introActive = true;
         this.player.body.setVelocity(0, 0);
 
@@ -476,9 +555,10 @@ export class WorldScene extends Scene {
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 2
         }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51);
 
-        // Act title (if available)
+        // Act title
         let actTitle = null;
         let fullText = locData.locationDescription || '';
+
         if (locData.storyAct) {
             actTitle = this.add.text(cx, cy - 75, `ACT ${locData.storyAct.actNumber}: ${locData.storyAct.title}`, {
                 fontSize: '16px', fontFamily: 'monospace', color: '#ffd700',

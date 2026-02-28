@@ -18,6 +18,28 @@ export function GameShell() {
         storeRef.current = { gameBible, npcStates, updateNpcState, completedTasks, completeTask }
     }, [gameBible, npcStates, updateNpcState, completedTasks, completeTask])
 
+    // Sync completedTasks to Phaser (WorldScene uses this for act gating)
+    // Also auto-complete tasks with no assigned NPC when prerequisites are met
+    useEffect(() => {
+        EventBus.emit('sync-completed-tasks', completedTasks)
+
+        // Auto-complete tasks whose prerequisites are now all met
+        // Only persuasion tasks require actual NPC dialogue
+        const PERSUASION_TYPES = ['persuasion', 'emotional persuasion', 'AI persuasion']
+        const allTasks = gameBible?.tasks || []
+        allTasks.forEach(task => {
+            if (completedTasks.includes(task.id)) return  // already done
+            // Persuasion tasks with an NPC need dialogue — skip auto-complete
+            if (task.assigned_npc && PERSUASION_TYPES.includes(task.type)) return
+            const reqsMet = (task.requires || []).every(reqId => completedTasks.includes(reqId))
+            if (reqsMet) {
+                completeTask(task.id)
+            }
+        })
+        // If we auto-completed tasks, the next render cycle will re-run this effect
+        // because completeTask updates completedTasks in Zustand → cascading completion
+    }, [completedTasks, gameBible, completeTask])
+
     const [isDialogueLoading, setIsDialogueLoading] = useState(false)
 
     useEffect(() => {
@@ -34,6 +56,10 @@ export function GameShell() {
             const allTasks = gameBible?.tasks || []
             const activeTasksForNPC = []
             const blockedTasksForNPC = []
+
+            // Check how many total tasks this NPC has (completed or not)
+            const totalNpcTasks = allTasks.filter(t => t.assigned_npc === charId)
+            const allNpcTasksDone = totalNpcTasks.length > 0 && totalNpcTasks.every(t => completedTasks.includes(t.id))
 
             allTasks.forEach(task => {
                 if (task.assigned_npc !== charId) return
@@ -53,6 +79,52 @@ export function GameShell() {
             })
 
             const state = npcStates[charId] || { trust_level: 0, conversation_history: [] }
+
+            // If ALL of this NPC's tasks are already completed, dismiss
+            if (allNpcTasksDone && character.role !== 'protagonist') {
+                setTimeout(() => {
+                    EventBus.emit('dialogue-ready', {
+                        npc_response: `We've done what we needed to do. Good luck on the rest of your journey.`,
+                        trust_delta: 0,
+                        new_trust_level: state.trust_level,
+                        is_convinced: true,
+                        emotion: 'friendly',
+                        player_choices: [],
+                        blocked: false,
+                        blocked_reason: '',
+                        characterId: charId,
+                        characterName: character.name,
+                        activeTasks: [],
+                        blockedTasks: [],
+                    })
+                }, 0)
+                return
+            }
+
+            // If NPC has ONLY blocked tasks (no active ones), refuse without calling the API
+            if (activeTasksForNPC.length === 0 && blockedTasksForNPC.length > 0 && character.role !== 'protagonist') {
+                const refusalText = `I have nothing to say to you right now. Come back when you're ready.`
+
+                // Defer to next tick — synchronous emit causes a race condition
+                // between WorldScene (still mid-update) and DialogueScene launch
+                setTimeout(() => {
+                    EventBus.emit('dialogue-ready', {
+                        npc_response: refusalText,
+                        trust_delta: 0,
+                        new_trust_level: state.trust_level,
+                        is_convinced: false,
+                        emotion: 'neutral',
+                        player_choices: [],
+                        blocked: true,
+                        blocked_reason: `Complete prerequisite tasks first.`,
+                        characterId: charId,
+                        characterName: character.name,
+                        activeTasks: [],
+                        blockedTasks: blockedTasksForNPC,
+                    })
+                }, 0)
+                return
+            }
 
             setIsDialogueLoading(true)
 

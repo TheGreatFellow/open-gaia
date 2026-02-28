@@ -23,8 +23,10 @@ export class DialogueScene extends Scene {
         // ─── NPC SPEECH (top area) ───
         this._drawNpcSpeech(data.npc_response, data.emotion || 'neutral', data.new_trust_level || 0, data.characterName || 'UNKNOWN');
 
-        // ─── PLAYER CHOICES (bottom area) ───
-        this._drawPlayerChoices(data.player_choices || []);
+        // ─── PLAYER CHOICES (bottom area, only if choices exist) ───
+        if (data.player_choices && data.player_choices.length > 0) {
+            this._drawPlayerChoices(data.player_choices);
+        }
 
         // Highlight initial selection
         this._updateSelection();
@@ -53,6 +55,8 @@ export class DialogueScene extends Scene {
                 if (!isReward) {
                     EventBus.emit('player-choice', { ...choice, characterId: data.characterId });
                 }
+                this._closeDialogue();
+            } else if (!data.player_choices || data.player_choices.length === 0) {
                 this._closeDialogue();
             }
         };
@@ -149,7 +153,9 @@ export class DialogueScene extends Scene {
         msgText.setDepth(11);
 
         // ── Separator label ──
-        const sepLabel = this.add.text(400, barH + 8, '— choose your response —', {
+        const hasChoices = this.currentData.player_choices && this.currentData.player_choices.length > 0;
+        const sepText = hasChoices ? '— choose your response —' : '— press ENTER or ESC to leave —';
+        const sepLabel = this.add.text(400, barH + 8, sepText, {
             fontSize: '10px',
             fontFamily: 'monospace',
             color: '#555555'
