@@ -40,7 +40,7 @@ async def story_branch(request: StoryBranchRequest):
 
     try:
         raw = await chat_complete(
-            model="magistral-medium-2506",
+            model="mistral-medium-latest",
             system_prompt=system_prompt,
             user_message=user_message,
             json_mode=True,

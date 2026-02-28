@@ -69,3 +69,19 @@ class StoryBranchResponse(BaseModel):
     steers_toward_goal: bool
     player_choices: List[BranchPlayerChoice] = []
 
+
+# ── Bible listing models ─────────────────────────
+
+class BibleSummary(BaseModel):
+    """Summary of a stored Game Bible for listing."""
+    id: str
+    title: str
+    setting: str
+    tone: str
+    end_goal: str
+    created_at: str
+
+
+class BibleListResponse(BaseModel):
+    """Returned by GET /api/bibles"""
+    bibles: List[BibleSummary]
