@@ -1,15 +1,25 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getBibleById } from '../lib/services'
 import { LoadingScreen } from '../components/LoadingScreen'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
+import { useGameStore } from '../stores/useGameStore'
 
 export default function BibleDetail() {
     const { id } = useParams()
     const [bibleData, setBibleData] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const navigate = useNavigate()
+    const { setGameBible, setGamePhase } = useGameStore()
+
+    const handlePlayGame = () => {
+        if (!bibleData) return
+        setGameBible(bibleData)
+        setGamePhase('playing')
+        navigate('/')
+    }
 
     useEffect(() => {
         const fetchBible = async () => {
@@ -56,9 +66,17 @@ export default function BibleDetail() {
                             ← Back
                         </Button>
                     </Link>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-neutral-50 ml-auto">
-                        Game Bible Details
-                    </h1>
+                    <div className="flex items-center ml-auto gap-4">
+                        <h1 className="text-4xl font-extrabold tracking-tight text-neutral-50">
+                            Game Bible Details
+                        </h1>
+                        <Button
+                            onClick={handlePlayGame}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                        >
+                            Play World
+                        </Button>
+                    </div>
                 </div>
 
                 {/* World Overvew */}

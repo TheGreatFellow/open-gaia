@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import StartGame from './main';
 import { EventBus } from './EventBus';
+import { useGameStore } from '../stores/useGameStore';
 
 export const PhaserGame = () => {
     const gameRef = useRef(null);
-    const [ready, setReady] = useState(false);
+    const gameBible = useGameStore(state => state.gameBible);
 
     useEffect(() => {
         const onBootReady = () => setReady(true);
@@ -14,8 +15,15 @@ export const PhaserGame = () => {
             gameRef.current = StartGame('game-container');
         }
 
-        // Safety fallback
-        const fallback = setTimeout(() => setReady(true), 6000);
+        if (gameRef.current && gameBible) {
+            console.log("PhaserGame injecting gameBible into registry:", {
+                hasLocations: !!gameBible.locations,
+                keys: Object.keys(gameBible),
+                locations: gameBible.locations
+            });
+            gameRef.current.registry.set('gameBible', gameBible);
+            EventBus.emit('bible-updated', gameBible);
+        }
 
         return () => {
             clearTimeout(fallback);
@@ -25,7 +33,7 @@ export const PhaserGame = () => {
                 gameRef.current = null;
             }
         };
-    }, []);
+    }, [gameBible]);
 
     return (
         <div style={{ position: 'relative', width: '800px', height: '600px' }}>
