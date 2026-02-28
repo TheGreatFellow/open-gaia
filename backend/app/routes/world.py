@@ -38,11 +38,14 @@ async def generate_world(req: GenerateWorldRequest):
     cache_key = _cache_key(req.story, req.end_goal)
 
     # 1. Check cache
-    cached = await redis_manager.get_game_bible(cache_key)
-    if cached:
-        logger.info("Cache HIT for key=%s", cache_key)
-        bible = GameBible(**cached)
-        return GenerateWorldResponse(game_bible=bible)
+    try:
+        cached = await redis_manager.get_game_bible(cache_key)
+        if cached:
+            logger.info("Cache HIT for key=%s", cache_key)
+            bible = GameBible(**cached)
+            return GenerateWorldResponse(game_bible=bible)
+    except Exception as exc:
+        logger.error("Redis cache check failed: %s", exc)
 
     # 2. Run the 3-step Mistral pipeline
     try:
@@ -61,14 +64,20 @@ async def generate_world(req: GenerateWorldRequest):
         bible = GameBible(**FALLBACK_GAME_BIBLE)
 
     # 4. Cache in Redis
-    await redis_manager.set_game_bible(cache_key, bible.model_dump())
+    try:
+        await redis_manager.set_game_bible(cache_key, bible.model_dump())
+    except Exception as exc:
+        logger.error("Redis cache set failed: %s", exc)
 
     # 5. Persist in MongoDB
-    await mongo_manager.save_game_bible(
-        story=req.story,
-        end_goal=req.end_goal,
-        bible_dict=bible.model_dump(),
-    )
+    try:
+        await mongo_manager.save_game_bible(
+            story=req.story,
+            end_goal=req.end_goal,
+            bible_dict=bible.model_dump(),
+        )
+    except Exception as exc:
+        logger.error("MongoDB save failed: %s", exc)
 
     # 6. Return
     return GenerateWorldResponse(game_bible=bible)
@@ -79,9 +88,13 @@ async def generate_world(req: GenerateWorldRequest):
 @router.get("/bibles", response_model=BibleListResponse)
 async def list_bibles():
     """Return summary list of all stored Game Bibles."""
-    docs = await mongo_manager.get_all_bibles()
-    summaries = [BibleSummary(**doc) for doc in docs]
-    return BibleListResponse(bibles=summaries)
+    try:
+        docs = await mongo_manager.get_all_bibles()
+        summaries = [BibleSummary(**doc) for doc in docs]
+        return BibleListResponse(bibles=summaries)
+    except Exception as exc:
+        logger.error("List bibles failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to list bibles")
 
 
 # ── Get a single bible by ID ────────────────────────
@@ -89,7 +102,14 @@ async def list_bibles():
 @router.get("/bibles/{bible_id}")
 async def get_bible(bible_id: str):
     """Return a full Game Bible by its MongoDB _id."""
-    doc = await mongo_manager.get_bible_by_id(bible_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Bible not found")
-    return doc
+    try:
+        doc = await mongo_manager.get_bible_by_id(bible_id)
+        if not doc:
+            raise HTTPException(status_code=404, detail="Bible not found")
+        return doc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Get bible failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to fetch bible")
+
