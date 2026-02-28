@@ -1,17 +1,32 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useGameStore } from './stores/useGameStore'
 import { StoryInput } from './components/StoryInput'
 import { LoadingScreen } from './components/LoadingScreen'
 import { GameShell } from './components/GameShell'
+import CreateWorld from './pages/CreateWorld'
 
-function App() {
+function Home() {
   const gamePhase = useGameStore((state) => state.gamePhase)
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 selection:bg-neutral-800">
+    <>
       {gamePhase === 'input' && <StoryInput />}
       {gamePhase === 'loading' && <LoadingScreen />}
       {gamePhase === 'playing' && <GameShell />}
-    </div>
+    </>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-neutral-950 text-neutral-50 selection:bg-neutral-800">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/create" element={<CreateWorld />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
   )
 }
 
