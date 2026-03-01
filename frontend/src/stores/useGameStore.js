@@ -4,6 +4,13 @@ export const useGameStore = create((set) => ({
     gamePhase: 'input', // 'input' | 'loading' | 'playing'
     setGamePhase: (phase) => set({ gamePhase: phase }),
 
+    resetState: () => set({
+        gamePhase: 'input',
+        gameBible: null,
+        completedTasks: [],
+        npcStates: {}
+    }),
+
     gameBible: null,
     completedTasks: [],
     completeTask: (taskId) => set((state) => ({

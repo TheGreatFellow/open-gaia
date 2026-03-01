@@ -12,9 +12,10 @@ export default function HomePage() {
     const [loading, setLoading] = useState(true)
     const [playingId, setPlayingId] = useState(null)
     const navigate = useNavigate()
-    const { setGameBible, setGamePhase } = useGameStore()
+    const { setGameBible, setGamePhase, resetState } = useGameStore()
 
     useEffect(() => {
+        resetState()
         getBibles()
             .then((data) => setBibles(data.bibles || []))
             .catch(() => { })
