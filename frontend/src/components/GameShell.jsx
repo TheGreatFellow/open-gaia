@@ -4,6 +4,16 @@ import { EventBus } from '../game/EventBus'
 import { useGameStore } from '../stores/useGameStore'
 import { sendNPCDialogue } from '../lib/services'
 
+// Voice preference stored in localStorage so it persists across sessions
+const VOICE_PREF_KEY = 'open_gaia_voice_enabled'
+function getVoicePref() {
+    const val = localStorage.getItem(VOICE_PREF_KEY)
+    return val === null ? true : val === 'true'
+}
+function setVoicePref(enabled) {
+    localStorage.setItem(VOICE_PREF_KEY, String(enabled))
+}
+
 export function GameShell() {
     const gameBible = useGameStore(state => state.gameBible)
     const npcStates = useGameStore(state => state.npcStates)
@@ -129,6 +139,9 @@ export function GameShell() {
             setIsDialogueLoading(true)
 
             try {
+                // Read current voice preference
+                const enableVoice = getVoicePref()
+
                 // Call the API endpoint
                 const response = await sendNPCDialogue(
                     character,
@@ -137,7 +150,8 @@ export function GameShell() {
                     choiceText,
                     state.conversation_history,
                     activeTasksForNPC,
-                    blockedTasksForNPC
+                    blockedTasksForNPC,
+                    enableVoice
                 )
 
                 // Keep track of what was just said
@@ -185,12 +199,18 @@ export function GameShell() {
             handleDialogueFlow(choice.characterId, choice.index, choice.text)
         }
 
+        const onVoiceToggle = (enabled) => {
+            setVoicePref(enabled)
+        }
+
         EventBus.on('npc-interact', onNpcInteract)
         EventBus.on('player-choice', onPlayerChoice)
+        EventBus.on('voice-toggle', onVoiceToggle)
 
         return () => {
             EventBus.off('npc-interact', onNpcInteract)
             EventBus.off('player-choice', onPlayerChoice)
+            EventBus.off('voice-toggle', onVoiceToggle)
         }
     }, [])
 
