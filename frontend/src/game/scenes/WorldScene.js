@@ -681,6 +681,29 @@ export class WorldScene extends Scene {
         this._onLoadLocation = (newData) => { this.scene.restart(newData); };
         EventBus.on('load-location', this._onLoadLocation);
 
+        // ─── NPC escort to exit after task completion ───
+        this._onNpcTaskCompleted = ({ characterId }) => {
+            const npc = this.npcs.find(n => n.getData('characterId') === characterId);
+            if (!npc || !this.exitZones || this.exitZones.length === 0) return;
+
+            // Find nearest exit zone
+            let nearestExit = this.exitZones[0];
+            let nearestDist = Infinity;
+            for (const zone of this.exitZones) {
+                const d = Phaser.Math.Distance.Between(npc.x, npc.y, zone.x, zone.y);
+                if (d < nearestDist) { nearestDist = d; nearestExit = zone; }
+            }
+
+            // Set escort state on the NPC
+            npc.setData('isPatrolling', false);
+            npc.setData('isEscorting', true);
+            npc.setData('escortTargetX', nearestExit.x);
+            npc.setData('escortTargetY', nearestExit.y);
+            npc.body.setImmovable(false);  // Allow physics movement
+            console.log(`[Escort] ${characterId} walking to exit at (${nearestExit.x}, ${nearestExit.y})`);
+        };
+        EventBus.on('npc-task-completed', this._onNpcTaskCompleted);
+
         // ─── Story intro (first visit only) ───
         if (!this.visitedLocations.has(locId)) {
             this.visitedLocations.add(locId);
@@ -859,12 +882,53 @@ export class WorldScene extends Scene {
         // ─── Update player label position ───
         this.playerLabel.setPosition(this.player.x, this.player.y - 22);
 
-        // ─── NPC Patrol + label updates ───
+        // ─── NPC Patrol / Escort + label updates ───
         for (const npc of this.npcs) {
             // Update NPC label
             const labelEntry = this.npcLabels.find(e => e.npc === npc);
             if (labelEntry) {
                 labelEntry.label.setPosition(npc.x, npc.y - 22);
+            }
+
+            // ── Escort mode: NPC walks toward exit ──
+            if (npc.getData('isEscorting')) {
+                const targetX = npc.getData('escortTargetX');
+                const targetY = npc.getData('escortTargetY');
+                const escortSpeed = 55;
+                const dist = Phaser.Math.Distance.Between(npc.x, npc.y, targetX, targetY);
+
+                if (dist < 24) {
+                    // Arrived near exit — stop and face player
+                    npc.body.setVelocity(0, 0);
+                    const dx = this.player.x - npc.x;
+                    const dy = this.player.y - npc.y;
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        npc.anims.play(dx > 0 ? `${npc.texture.key}-walk-right` : `${npc.texture.key}-walk-left`, true);
+                    } else {
+                        npc.anims.play(dy > 0 ? `${npc.texture.key}-walk-down` : `${npc.texture.key}-walk-up`, true);
+                    }
+                    npc.anims.pause();
+                } else {
+                    // Walk toward exit
+                    const angle = Phaser.Math.Angle.Between(npc.x, npc.y, targetX, targetY);
+                    const vx = Math.cos(angle) * escortSpeed;
+                    const vy = Math.sin(angle) * escortSpeed;
+                    npc.body.setVelocity(vx, vy);
+
+                    // Play walk animation based on dominant direction
+                    if (Math.abs(vx) > Math.abs(vy)) {
+                        npc.anims.play(vx > 0 ? `${npc.texture.key}-walk-right` : `${npc.texture.key}-walk-left`, true);
+                    } else {
+                        npc.anims.play(vy > 0 ? `${npc.texture.key}-walk-down` : `${npc.texture.key}-walk-up`, true);
+                    }
+                }
+
+                // Move interaction zone to follow NPC
+                if (npc.interactZone) {
+                    npc.interactZone.setPosition(npc.x, npc.y);
+                    npc.interactZone.body.reset(npc.x, npc.y);
+                }
+                continue;  // Skip patrol logic
             }
 
             if (!npc.getData('isPatrolling')) continue;
