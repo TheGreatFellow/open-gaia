@@ -332,7 +332,7 @@ export class WorldScene extends Scene {
 
         // ─── Background music (play once, persists across scene restarts) ───
         if (!WorldScene._musicStarted && this.sound.context) {
-            const music = this.sound.add('bgMusic', { loop: true, volume: 0.3 });
+            const music = this.sound.add('bgMusic', { loop: true, volume: 0.15 });
             // Browsers require user interaction before audio — resume on first input
             this.input.once('pointerdown', () => {
                 if (this.sound.context.state === 'suspended') {
@@ -526,7 +526,7 @@ export class WorldScene extends Scene {
         const protagonistName = this.protagonist ? this.protagonist.name : 'Hero';
         this.playerLabel = this.add.text(playerX, playerY - 40, protagonistName, {
             fontSize: '11px',
-            fontFamily: 'monospace',
+            fontFamily: 'RetroGaming',
             color: '#ffd700',
             fontStyle: 'bold',
             stroke: '#000000',
@@ -551,7 +551,7 @@ export class WorldScene extends Scene {
             // NPC name label (RED)
             const label = this.add.text(charData.spawnX, charData.spawnY - 40, charData.characterName, {
                 fontSize: '11px',
-                fontFamily: 'monospace',
+                fontFamily: 'RetroGaming',
                 color: '#ff4444',
                 fontStyle: 'bold',
                 stroke: '#000000',
@@ -616,12 +616,12 @@ export class WorldScene extends Scene {
 
                 // Arrow + destination label
                 const arrow = this.add.text(pos.x, pos.y - 12, pos.arrow, {
-                    fontSize: '22px', fontFamily: 'monospace', color: '#ffdd57',
+                    fontSize: '22px', fontFamily: 'RetroGaming', color: '#ffdd57',
                     fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
                 }).setOrigin(0.5, 0.5).setDepth(5).setScrollFactor(0);
 
                 const destLabel = this.add.text(pos.x, pos.y + 10, destName, {
-                    fontSize: '9px', fontFamily: 'monospace', color: '#ffdd57',
+                    fontSize: '9px', fontFamily: 'RetroGaming', color: '#ffdd57',
                     stroke: '#000000', strokeThickness: 2
                 }).setOrigin(0.5, 0.5).setDepth(5).setScrollFactor(0);
 
@@ -720,60 +720,77 @@ export class WorldScene extends Scene {
         const cy = cam.height / 2;
 
         // Dark overlay box
-        const box = this.add.rectangle(cx, cy, 700, 260, 0x0a0a1a, 0.92)
-            .setScrollFactor(0).setDepth(50);
-        const border = this.add.rectangle(cx, cy, 700, 260)
-            .setScrollFactor(0).setDepth(50)
+        const box = this.add.rectangle(cx, cy + 20, 700, 260, 0x0a0a1a, 0.92)
+            .setScrollFactor(0).setDepth(50).setAlpha(0);
+        const border = this.add.rectangle(cx, cy + 20, 700, 260)
+            .setScrollFactor(0).setDepth(50).setAlpha(0)
             .setStrokeStyle(2, 0x44aaff);
 
         // Location name
-        const locName = this.add.text(cx, cy - 100, locData.locationName.toUpperCase(), {
-            fontSize: '14px', fontFamily: 'monospace', color: '#44aaff',
+        const locName = this.add.text(cx, cy - 100 + 20, locData.locationName.toUpperCase(), {
+            fontSize: '14px', fontFamily: 'RetroGaming', color: '#44aaff',
             fontStyle: 'bold', stroke: '#000000', strokeThickness: 2
-        }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51);
+        }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51).setAlpha(0);
 
         // Act title
         let actTitle = null;
         let fullText = locData.locationDescription || '';
 
         if (locData.storyAct) {
-            actTitle = this.add.text(cx, cy - 75, `ACT ${locData.storyAct.actNumber}: ${locData.storyAct.title}`, {
-                fontSize: '16px', fontFamily: 'monospace', color: '#ffd700',
+            actTitle = this.add.text(cx, cy - 75 + 20, `ACT ${locData.storyAct.actNumber}: ${locData.storyAct.title}`, {
+                fontSize: '16px', fontFamily: 'RetroGaming', color: '#ffd700',
                 fontStyle: 'bold', stroke: '#000000', strokeThickness: 2
-            }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51);
+            }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51).setAlpha(0);
             fullText = locData.storyAct.description;
         }
 
         // Typewriter text
-        const textObj = this.add.text(cx - 320, cy - 45, '', {
-            fontSize: '12px', fontFamily: 'monospace', color: '#ccddee',
+        const textObj = this.add.text(cx - 320, cy - 45 + 20, '', {
+            fontSize: '12px', fontFamily: 'RetroGaming', color: '#ccddee',
             wordWrap: { width: 640 }, lineSpacing: 6
-        }).setScrollFactor(0).setDepth(51);
+        }).setScrollFactor(0).setDepth(51).setAlpha(0);
 
         // Hint
-        const hint = this.add.text(cx, cy + 110, '[ SPACE to skip ]', {
-            fontSize: '10px', fontFamily: 'monospace', color: '#667788'
-        }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51);
+        const hint = this.add.text(cx, cy + 110 + 20, '[ SPACE to skip ]', {
+            fontSize: '10px', fontFamily: 'RetroGaming', color: '#667788'
+        }).setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(51).setAlpha(0);
 
         const allParts = [box, border, locName, textObj, hint];
         if (actTitle) allParts.push(actTitle);
 
-        // Typewriter effect
+        // ─── Rise Up & Fade In Animation ───
+        this.tweens.add({
+            targets: allParts,
+            y: '-=20',
+            alpha: 1,
+            duration: 1500,
+            ease: 'Sine.easeOut'
+        });
+
+        // Typewriter effect (delayed to let the box fade in first)
         let charIndex = 0;
         const typeSpeed = 30; // ms per char
-        const typeTimer = this.time.addEvent({
-            delay: typeSpeed,
-            repeat: fullText.length - 1,
-            callback: () => {
-                charIndex++;
-                textObj.setText(fullText.substring(0, charIndex));
-            }
+        let typeTimer = null;
+
+        this.time.delayedCall(600, () => {
+            if (!this._introActive) return;
+            typeTimer = this.time.addEvent({
+                delay: typeSpeed,
+                repeat: fullText.length - 1,
+                callback: () => {
+                    charIndex++;
+                    if (charIndex % 3 === 0) {
+                        this.sound.play('typewriter', { volume: 0.4 });
+                    }
+                    textObj.setText(fullText.substring(0, charIndex));
+                }
+            });
         });
 
         // Skip with space
         const skipHandler = () => {
             if (this._introActive) {
-                typeTimer.remove(false);
+                if (typeTimer) typeTimer.remove(false);
                 textObj.setText(fullText);
                 dismissIntro();
             }
@@ -786,8 +803,10 @@ export class WorldScene extends Scene {
 
             this.tweens.add({
                 targets: allParts,
+                y: '-=10',
                 alpha: 0,
                 duration: 500,
+                ease: 'Sine.easeIn',
                 onComplete: () => {
                     allParts.forEach(p => p.destroy());
                 }
@@ -796,8 +815,8 @@ export class WorldScene extends Scene {
 
         this.spaceKey.on('down', skipHandler);
 
-        // Auto-dismiss after text completes + 3 seconds
-        this.time.delayedCall(fullText.length * typeSpeed + 3000, () => {
+        // Auto-dismiss after text completes + 4 seconds
+        this.time.delayedCall(600 + (fullText.length * typeSpeed) + 4000, () => {
             dismissIntro();
         });
     }

@@ -200,10 +200,16 @@ export function GameShell() {
                 <div className="overflow-hidden rounded-lg shadow-2xl ring-1 ring-white/10 relative">
                     <PhaserGame />
                     {isDialogueLoading && (
-                        <div className="absolute inset-0 bg-neutral-950/70 backdrop-blur-sm flex items-center justify-center z-50">
-                            <div className="text-neutral-50 flex flex-col items-center gap-4">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
-                                <p className="font-medium animate-pulse text-neutral-300 tracking-wide">Connecting to AI...</p>
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
+                            <div className="bg-[#0a0a1a] border-2 border-[#44aaff] px-6 py-4 rounded-sm flex items-center gap-4 shadow-[0_0_20px_rgba(68,170,255,0.3)]">
+                                <div className="flex gap-1.5">
+                                    <div className="w-2 h-2 bg-[#44aaff] rounded-sm animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                    <div className="w-2 h-2 bg-[#44aaff] rounded-sm animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                    <div className="w-2 h-2 bg-[#44aaff] rounded-sm animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                                </div>
+                                <p className="font-['RetroGaming'] text-[#ccddee] text-sm tracking-widest pt-1">
+                                    Awaiting Response...
+                                </p>
                             </div>
                         </div>
                     )}
