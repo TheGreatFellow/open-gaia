@@ -64,6 +64,7 @@ class NPCDialogueRequest(BaseModel):
     conversation_history: list[dict] = Field(default_factory=list)
     required_items: List[str] = []
     player_inventory: List[str] = []
+    enable_voice: bool = Field(default=True, description="Whether to generate TTS audio for this response")
 
 class GeneratePortraitRequest(BaseModel):
     """POST /api/generate-portrait"""

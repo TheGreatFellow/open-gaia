@@ -48,6 +48,7 @@ class NPCDialogueResponse(BaseModel):
     blocked: bool = False
     blocked_reason: str = ""
     completed_task_id: str | None = Field(default=None, description="ID of the task completed in this turn, if any")
+    audio_base64: str | None = Field(default=None, description="Base64-encoded mp3 audio of the NPC's spoken line")
 
 class GeneratePortraitResponse(BaseModel):
     """Returned by POST /api/generate-portrait"""

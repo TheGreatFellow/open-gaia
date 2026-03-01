@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routes import world, dialogue, story, portrait
+from app.routes import world, dialogue, story, portrait, voice
 from app.services.redis_cache import redis_manager
 from app.services.mongo_client import mongo_manager
 
@@ -57,6 +57,7 @@ app.include_router(world.router)
 app.include_router(dialogue.router)
 app.include_router(story.router)
 app.include_router(portrait.router)
+app.include_router(voice.router)
 
 
 # ── Health check ────────────────────────────────────
