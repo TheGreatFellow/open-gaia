@@ -154,6 +154,7 @@ export class WorldScene extends Scene {
         this.canInteract = true;
         this._transitioning = false;
         this.visitedLocations = new Set();
+        this._mapCache = {};  // Cache generated maps by location ID
     }
 
     buildLocationsFromBible(bible) {
@@ -192,16 +193,22 @@ export class WorldScene extends Scene {
             if (customGen) {
                 mapData = customGen();
             } else {
-                mapData = generateLocationMap({
-                    width: 25,
-                    height: 19,
-                    heroRegion,
-                    npcRegion,
-                    exitEdges: exitEdges.length > 0 ? exitEdges : ['right'],
-                    exitIds,
-                    targetFloorRatio: 0.45,
-                    tileStyle,
-                });
+                // Check cache first — reuse previous map if revisiting
+                if (this._mapCache[loc.id]) {
+                    mapData = this._mapCache[loc.id];
+                } else {
+                    mapData = generateLocationMap({
+                        width: 25,
+                        height: 19,
+                        heroRegion,
+                        npcRegion,
+                        exitEdges: exitEdges.length > 0 ? exitEdges : ['right'],
+                        exitIds,
+                        targetFloorRatio: 0.45,
+                        tileStyle,
+                    });
+                    this._mapCache[loc.id] = mapData;  // Store for revisits
+                }
             }
 
             // Find NPCs for this location
@@ -524,7 +531,7 @@ export class WorldScene extends Scene {
 
         // ─── Player name label (GOLD) ───
         const protagonistName = this.protagonist ? this.protagonist.name : 'Hero';
-        this.playerLabel = this.add.text(playerX, playerY - 40, protagonistName, {
+        this.playerLabel = this.add.text(playerX, playerY - 22, protagonistName, {
             fontSize: '11px',
             fontFamily: 'RetroGaming',
             color: '#ffd700',
@@ -549,7 +556,7 @@ export class WorldScene extends Scene {
             npc.setData('characterName', charData.characterName);
 
             // NPC name label (RED)
-            const label = this.add.text(charData.spawnX, charData.spawnY - 40, charData.characterName, {
+            const label = this.add.text(charData.spawnX, charData.spawnY - 22, charData.characterName, {
                 fontSize: '11px',
                 fontFamily: 'RetroGaming',
                 color: '#ff4444',
@@ -828,7 +835,7 @@ export class WorldScene extends Scene {
         if (this._introActive) {
             this.player.body.setVelocity(0, 0);
             // Update label positions even while frozen
-            this.playerLabel.setPosition(this.player.x, this.player.y - 40);
+            this.playerLabel.setPosition(this.player.x, this.player.y - 22);
             return;
         }
 
@@ -850,14 +857,14 @@ export class WorldScene extends Scene {
         }
 
         // ─── Update player label position ───
-        this.playerLabel.setPosition(this.player.x, this.player.y - 40);
+        this.playerLabel.setPosition(this.player.x, this.player.y - 22);
 
         // ─── NPC Patrol + label updates ───
         for (const npc of this.npcs) {
             // Update NPC label
             const labelEntry = this.npcLabels.find(e => e.npc === npc);
             if (labelEntry) {
-                labelEntry.label.setPosition(npc.x, npc.y - 40);
+                labelEntry.label.setPosition(npc.x, npc.y - 22);
             }
 
             if (!npc.getData('isPatrolling')) continue;
