@@ -10,30 +10,98 @@ export class DialogueScene extends Scene {
 
     create(data) {
         this.scene.pause('WorldScene');
+        this._isClosing = false;
 
         // Dim overlay — game world stays visible
         const overlay = this.add.rectangle(400, 300, 800, 600, 0x000000, 0.25);
         overlay.setScrollFactor(0);
         overlay.setDepth(0);
+        overlay.alpha = 0;
+        this.tweens.add({ targets: overlay, alpha: 0.25, duration: 300 });
 
         this.selectedIndex = 0;
         this.choiceElements = [];
         this.currentData = data;
 
         // ─── NPC SPEECH (top area) ───
-        this._drawNpcSpeech(data.npc_response, data.emotion || 'neutral', data.new_trust_level || 0, data.characterName || 'UNKNOWN');
+        const beforeNpc = this.children.list.length;
+        const msgText = this._drawNpcSpeech(data.npc_response, data.emotion || 'neutral', data.new_trust_level || 0, data.characterName || 'UNKNOWN');
+        const npcElements = this.children.list.slice(beforeNpc);
 
         // ─── PLAYER CHOICES (bottom area, only if choices exist) ───
+        const beforePlayer = this.children.list.length;
         if (data.player_choices && data.player_choices.length > 0) {
             this._drawPlayerChoices(data.player_choices);
         }
+        const playerElements = this.children.list.slice(beforePlayer);
 
         // Highlight initial selection
         this._updateSelection();
 
+        // ─── ANIMATE IN NPC ───
+        npcElements.forEach(el => el.y -= 150);
+        this.tweens.add({
+            targets: npcElements,
+            y: '+=150',
+            duration: 300,
+            ease: 'Cubic.easeOut'
+        });
+
+        // Hide player choices initially
+        this._choicesAnimatedIn = false;
+        if (playerElements.length > 0) {
+            playerElements.forEach(el => {
+                el.y += 250;
+                el.alpha = 0;
+            });
+        }
+
+        // ─── TYPEWRITER EFFECT ───
+        this._isTyping = true;
+        let charIndex = 0;
+        const fullMessage = `"${data.npc_response}"`;
+        const typeSpeed = 25; // ms per char
+        this._typeTimer = this.time.addEvent({
+            delay: typeSpeed,
+            repeat: fullMessage.length - 1,
+            callback: () => {
+                charIndex++;
+                if (charIndex % 3 === 0) {
+                    this.sound.play('typewriter', { volume: 0.4 });
+                }
+                msgText.setText(fullMessage.substring(0, charIndex));
+            }
+        });
+
+        const finishTyping = () => {
+            if (this._typeTimer) this._typeTimer.remove(false);
+            msgText.setText(fullMessage);
+            this._isTyping = false;
+
+            // Animate choices in after typing finishes
+            if (!this._choicesAnimatedIn && playerElements.length > 0) {
+                this._choicesAnimatedIn = true;
+                this.tweens.add({
+                    targets: playerElements,
+                    y: '-=250',
+                    alpha: 1,
+                    duration: 300,
+                    ease: 'Cubic.easeOut'
+                });
+            }
+        };
+
+        // Auto-finish if typing competes naturally
+        this.time.delayedCall(fullMessage.length * typeSpeed, () => {
+            if (this._isTyping) finishTyping();
+        });
+
         // ─── KEYBOARD HANDLING ───
         this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-        this.escKey.on('down', () => this._closeDialogue());
+        this.escKey.on('down', () => {
+            if (this._isTyping) finishTyping();
+            else this._closeDialogue();
+        });
 
         this.upKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
         this.downKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
@@ -49,6 +117,10 @@ export class DialogueScene extends Scene {
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
         const confirmChoice = () => {
+            if (this._isTyping) {
+                finishTyping();
+                return;
+            }
             const choice = data.player_choices && data.player_choices[this.selectedIndex];
             if (choice) {
                 const isReward = data.completed_task_id != null && data.player_choices.length === 1;
@@ -72,6 +144,10 @@ export class DialogueScene extends Scene {
             if (data.player_choices && i < data.player_choices.length) {
                 const key = this.input.keyboard.addKey(keyCode);
                 key.on('down', () => {
+                    if (this._isTyping) {
+                        finishTyping();
+                        return;
+                    }
                     const choice = data.player_choices[i]
                     const isReward = data.completed_task_id != null && data.player_choices.length === 1;
                     if (!isReward) {
@@ -120,7 +196,7 @@ export class DialogueScene extends Scene {
         // ── NPC name label ──
         const nameLabel = this.add.text(100, 12, characterName.toUpperCase(), {
             fontSize: '16px',
-            fontFamily: 'monospace',
+            fontFamily: 'RetroGaming',
             color: this._emotionHex(emotion),
             fontStyle: 'bold'
         });
@@ -130,7 +206,7 @@ export class DialogueScene extends Scene {
         // ── Emotion tag next to name ──
         const emotionTag = this.add.text(180, 14, `[${emotion.toUpperCase()}]`, {
             fontSize: '11px',
-            fontFamily: 'monospace',
+            fontFamily: 'RetroGaming',
             color: this._emotionHex(emotion),
             alpha: 0.7
         });
@@ -141,9 +217,9 @@ export class DialogueScene extends Scene {
         this._drawTrustMeter(gfx, 600, 14, trustLevel);
 
         // ── NPC dialogue text ──
-        const msgText = this.add.text(100, 42, `"${message}"`, {
+        const msgText = this.add.text(100, 42, '', {
             fontSize: '14px',
-            fontFamily: '"Courier New", monospace',
+            fontFamily: 'RetroGaming',
             color: '#e8e8e8',
             wordWrap: { width: 670 },
             lineSpacing: 5,
@@ -157,12 +233,14 @@ export class DialogueScene extends Scene {
         const sepText = hasChoices ? '— choose your response —' : '— press ENTER or ESC to leave —';
         const sepLabel = this.add.text(400, barH + 8, sepText, {
             fontSize: '10px',
-            fontFamily: 'monospace',
+            fontFamily: 'RetroGaming',
             color: '#555555'
         });
         sepLabel.setOrigin(0.5, 0);
         sepLabel.setScrollFactor(0);
         sepLabel.setDepth(11);
+
+        return msgText;
     }
 
     // ══════════════════════════════════════════
@@ -175,7 +253,7 @@ export class DialogueScene extends Scene {
 
         const label = this.add.text(x - 60, y, `TRUST: ${trustLevel}`, {
             fontSize: '10px',
-            fontFamily: 'monospace',
+            fontFamily: 'RetroGaming',
             color: '#777777'
         });
         label.setScrollFactor(0);
@@ -235,7 +313,7 @@ export class DialogueScene extends Scene {
         // ── "YOU" label next to portrait ──
         const youLabel = this.add.text(startX, startY - 28, 'YOU', {
             fontSize: '14px',
-            fontFamily: 'monospace',
+            fontFamily: 'RetroGaming',
             color: '#4488cc',
             fontStyle: 'bold'
         });
@@ -244,7 +322,7 @@ export class DialogueScene extends Scene {
 
         const pickLabel = this.add.text(startX + 40, startY - 26, '— pick a response', {
             fontSize: '10px',
-            fontFamily: 'monospace',
+            fontFamily: 'RetroGaming',
             color: '#446688'
         });
         pickLabel.setScrollFactor(0);
@@ -268,7 +346,7 @@ export class DialogueScene extends Scene {
                 // Add "TASK REWARD" tag
                 const rewardTag = this.add.text(startX + choiceW - 100, cy + choiceH / 2, '⭐ REWARD', {
                     fontSize: '12px',
-                    fontFamily: 'monospace',
+                    fontFamily: 'RetroGaming',
                     color: '#ffaa00',
                     fontStyle: 'bold'
                 });
@@ -286,7 +364,7 @@ export class DialogueScene extends Scene {
             const badgeColor = isReward ? '#ffaa00' : '#4488cc';
             const badge = this.add.text(startX + 12, cy + choiceH / 2, `${i + 1}`, {
                 fontSize: '13px',
-                fontFamily: 'monospace',
+                fontFamily: 'RetroGaming',
                 color: badgeColor,
                 fontStyle: 'bold'
             });
@@ -298,7 +376,7 @@ export class DialogueScene extends Scene {
             const textColor = isReward ? '#ffdd88' : '#cccccc';
             const text = this.add.text(startX + 34, cy + choiceH / 2, choice.text, {
                 fontSize: '12px',
-                fontFamily: '"Courier New", monospace',
+                fontFamily: 'RetroGaming',
                 color: textColor,
                 wordWrap: { width: choiceW - 50 },
                 lineSpacing: 2
@@ -323,6 +401,9 @@ export class DialogueScene extends Scene {
             });
 
             hitZone.on('pointerdown', () => {
+                // Ignore clicks if still typing
+                if (this._isTyping) return;
+
                 if (!isReward) {
                     EventBus.emit('player-choice', { ...choice, characterId: this.currentData?.characterId });
                 }
@@ -336,7 +417,7 @@ export class DialogueScene extends Scene {
         const lastY = startY + choices.length * (choiceH + gap);
         const prompt = this.add.text(startX + choiceW / 2, lastY + 8, '↑↓ Navigate  •  ENTER Select  •  ESC Close', {
             fontSize: '10px',
-            fontFamily: 'monospace',
+            fontFamily: 'RetroGaming',
             color: '#444444'
         });
         prompt.setOrigin(0.5, 0);
@@ -402,9 +483,21 @@ export class DialogueScene extends Scene {
     }
 
     _closeDialogue() {
-        this.scene.resume('WorldScene');
-        EventBus.emit('dialogue-closed');
-        this.scene.stop('DialogueScene');
+        if (this._isClosing) return;
+        this._isClosing = true;
+
+        this.input.keyboard.removeAllKeys();
+
+        this.tweens.add({
+            targets: this.children.list,
+            alpha: 0,
+            duration: 150,
+            onComplete: () => {
+                this.scene.resume('WorldScene');
+                EventBus.emit('dialogue-closed');
+                this.scene.stop('DialogueScene');
+            }
+        });
     }
 
     shutdown() {

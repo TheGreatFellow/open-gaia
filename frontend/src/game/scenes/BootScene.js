@@ -4,6 +4,7 @@ import manPng from '../../assets/sprites/man.png';
 import zombiePng from '../../assets/sprites/zombie.png';
 import basechipPng from '../../assets/tilesets/basechip.png';
 import bgMusicOgg from '../../assets/Chiptronical.ogg';
+import typewriterWav from '../../assets/typewriter.wav';
 
 export class BootScene extends Scene {
     constructor() {
@@ -62,6 +63,7 @@ export class BootScene extends Scene {
             frameHeight: 32
         });
         this.load.audio('bgMusic', bgMusicOgg);
+        this.load.audio('typewriter', typewriterWav);
     }
 
     create() {
