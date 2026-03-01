@@ -3,7 +3,8 @@ import { PhaserGame } from '../game/PhaserGame'
 import { EventBus } from '../game/EventBus'
 import { useGameStore } from '../stores/useGameStore'
 import { sendNPCDialogue } from '../lib/services'
-
+import Confetti from 'react-confetti'
+import { useWindowSize } from 'react-use'
 // Voice preference stored in localStorage so it persists across sessions
 const VOICE_PREF_KEY = 'open_gaia_voice_enabled'
 function getVoicePref() {
@@ -49,6 +50,9 @@ export function GameShell() {
         // If we auto-completed tasks, the next render cycle will re-run this effect
         // because completeTask updates completedTasks in Zustand → cascading completion
     }, [completedTasks, gameBible, completeTask])
+
+    const { width, height } = useWindowSize()
+    const allTasksCompleted = gameBible?.tasks?.length > 0 && completedTasks.length === gameBible.tasks.length
 
     const [isDialogueLoading, setIsDialogueLoading] = useState(false)
 
@@ -216,6 +220,25 @@ export function GameShell() {
 
     return (
         <div className="flex flex-col min-h-screen bg-neutral-950">
+            {allTasksCompleted && (
+                <>
+                    <Confetti width={width} height={height} numberOfPieces={300} recycle={false} />
+                    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[100] animate-bounce">
+                        <div className="bg-gradient-to-r from-yellow-600 to-yellow-400 text-black px-8 py-5 rounded-xl shadow-[0_0_40px_rgba(234,179,8,0.5)] border-2 border-yellow-200 text-center flex flex-col items-center gap-4">
+                            <div>
+                                <h2 className="text-3xl font-black font-['RetroGaming'] tracking-widest mb-1">MISSION ACCOMPLISHED</h2>
+                                <p className="font-bold opacity-80 text-sm">All tasks have been completed!</p>
+                            </div>
+                            <button
+                                onClick={() => window.location.href = '/'}
+                                className="mt-2 px-6 py-2 bg-black text-yellow-400 font-['RetroGaming'] text-sm tracking-wider rounded border border-yellow-500/50 hover:bg-neutral-900 hover:border-yellow-400 hover:scale-105 transition-all shadow-[0_0_15px_rgba(234,179,8,0.2)]"
+                            >
+                                RETURN TO HOME
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
             <div className="flex-1 flex items-center justify-center p-4 relative">
                 <div className="overflow-hidden rounded-lg shadow-2xl ring-1 ring-white/10 relative">
                     <PhaserGame />
