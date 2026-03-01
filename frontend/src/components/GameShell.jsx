@@ -174,6 +174,8 @@ export function GameShell() {
 
                 if (response.completed_task_id) {
                     completeTask(response.completed_task_id)
+                    // Tell WorldScene to make the NPC escort the player to the exit
+                    EventBus.emit('npc-task-completed', { characterId: charId })
                 }
 
                 // Notify Phaser it can open/update the DialogueScene
