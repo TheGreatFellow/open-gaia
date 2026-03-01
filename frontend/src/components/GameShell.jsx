@@ -35,13 +35,11 @@ export function GameShell() {
         EventBus.emit('sync-completed-tasks', completedTasks)
 
         // Auto-complete tasks whose prerequisites are now all met
-        // Only persuasion tasks require actual NPC dialogue
-        const PERSUASION_TYPES = ['persuasion', 'emotional persuasion', 'AI persuasion']
+        // Any task with an assigned NPC needs character interaction — skip auto-complete
         const allTasks = gameBible?.tasks || []
         allTasks.forEach(task => {
             if (completedTasks.includes(task.id)) return  // already done
-            // Persuasion tasks with an NPC need dialogue — skip auto-complete
-            if (task.assigned_npc && PERSUASION_TYPES.includes(task.type)) return
+            if (task.assigned_npc) return
             const reqsMet = (task.requires || []).every(reqId => completedTasks.includes(reqId))
             if (reqsMet) {
                 completeTask(task.id)
