@@ -1,6 +1,6 @@
 # Open Gaia — Backend
 
-AI-powered RPG story game backend for the Mistral AI Hackathon. Built with FastAPI, Mistral AI (Large / Small / Magistral), FLUX image generation, and Redis caching.
+AI-powered RPG story game backend for the Mistral AI Hackathon. Built with FastAPI, Mistral AI (Large / Small / Magistral), FLUX image generation, ElevenLabs Voice Synthesis, and Redis caching.
 
 ## File Tree
 
@@ -20,6 +20,7 @@ backend/
 │   ├── services/
 │   │   ├── mistral_client.py     # Large / Small / Magistral wrappers
 │   │   ├── portrait_service.py   # FLUX batch portrait gen
+│   │   ├── voice_service.py      # ElevenLabs TTS integration
 │   │   └── redis_cache.py        # async Redis, degrades gracefully
 │   ├── routes/
 │   │   ├── world.py          # POST /api/generate-world
@@ -38,7 +39,7 @@ backend/
 |--------|------|-------|---------|
 | `GET` | `/` | — | Health check |
 | `POST` | `/api/generate-world` | Mistral Large | Full Game Bible + portraits |
-| `POST` | `/api/npc-dialogue` | Mistral Small | Live NPC conversation |
+| `POST` | `/api/npc-dialogue` | Mistral Small + ElevenLabs | Live NPC conversation with optional voice |
 | `POST` | `/api/branch-story` | Magistral Medium | Unexpected choice handling |
 | `POST` | `/api/generate-portrait` | FLUX | Single portrait |
 
@@ -46,7 +47,7 @@ backend/
 
 ```bash
 cd backend
-cp .env.example .env   # add your MISTRAL_API_KEY
+cp .env.example .env   # add your MISTRAL_API_KEY and ELEVENLABS_API_KEY
 source venv/bin/activate
 python -m app.main     # → http://localhost:8000
 ```
@@ -60,6 +61,6 @@ Swagger docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 | `pip install -r requirements.txt` | ✅ All deps installed |
 | Server boot (`python -m app.main`) | ✅ Uvicorn running on `0.0.0.0:8000` |
 | Health check (`GET /`) | ✅ `{"status":"ok","service":"open-gaia-backend"}` |
-| OpenAPI schema | ✅ All 5 endpoints listed |
+| OpenAPI schema | ✅ All endpoints listed |
 | Redis unavailable | ✅ Graceful fallback, server continues |
 | CORS | ✅ Configured for `http://localhost:5173` |
