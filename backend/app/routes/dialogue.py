@@ -6,6 +6,7 @@ Frontend sends individual character fields from Zustand.
 Uses build_npc_dialogue_prompt / build_first_contact_prompt from npc_dialogue.py.
 """
 
+import base64
 import json
 import logging
 
@@ -14,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.requests import NPCDialogueRequest
 from app.models.responses import NPCDialogueResponse, PlayerChoice
 from app.services.mistral_client import chat_complete
+from app.services.voice_service import generate_npc_audio
 from app.prompts.npc_dialogue import build_npc_dialogue_prompt, build_first_contact_prompt
 
 logger = logging.getLogger(__name__)
@@ -158,14 +160,33 @@ async def npc_dialogue(request: NPCDialogueRequest):
             for i, opt in enumerate(raw_choices[:3])
         ]
 
+    # ── Generate TTS audio ──────────────────────────
+    npc_text = data.get("npc_response", "...")
+    npc_emotion = data.get("emotion", "neutral")
+    audio_b64 = None
+
+    if request.enable_voice:
+        try:
+            audio_bytes = await generate_npc_audio(
+                description=request.description,
+                text=npc_text,
+                emotion=npc_emotion,
+            )
+            if audio_bytes:
+                audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+                logger.info("TTS audio generated: %d bytes", len(audio_bytes))
+        except Exception as e:
+            logger.warning("TTS generation failed (non-fatal): %s", e)
+
     return NPCDialogueResponse(
-        npc_response=data.get("npc_response", "..."),
+        npc_response=npc_text,
         trust_delta=final_delta,
         new_trust_level=new_trust,
         is_convinced=is_convinced,
-        emotion=data.get("emotion", "neutral"),
+        emotion=npc_emotion,
         completed_task_id=completed_task_id,
         player_choices=player_choices,
         blocked=False,
         blocked_reason="",
+        audio_base64=audio_b64,
     )

@@ -88,6 +88,7 @@ export async function sendNPCDialogue(
     conversationHistory = [],
     activeTasks = [],
     blockedTasks = [],
+    enableVoice = true,
 ) {
     const { data } = await api.post('/npc-dialogue', {
         character_id: character.id,
@@ -105,6 +106,7 @@ export async function sendNPCDialogue(
         player_choice_index: playerChoiceIndex,
         player_choice_text: playerChoiceText,
         conversation_history: conversationHistory,
+        enable_voice: enableVoice,
     });
     return data;
 }

@@ -56,27 +56,59 @@ export class DialogueScene extends Scene {
             });
         }
 
-        // ─── TYPEWRITER EFFECT ───
+        // ─── AUDIO PLAYBACK ───
+        this._npcAudio = null;
+        if (data.audio_base64) {
+            try {
+                const binaryStr = atob(data.audio_base64);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: 'audio/mpeg' });
+                this._npcAudio = new Audio(URL.createObjectURL(blob));
+                this._npcAudio.volume = 0.85;
+            } catch (e) {
+                console.warn('Failed to decode NPC audio:', e);
+            }
+        }
+
+        // ─── TYPEWRITER EFFECT (synced to audio duration) ───
         this._isTyping = true;
         let charIndex = 0;
         const fullMessage = `"${data.npc_response}"`;
-        const typeSpeed = 25; // ms per char
-        this._typeTimer = this.time.addEvent({
-            delay: typeSpeed,
-            repeat: fullMessage.length - 1,
-            callback: () => {
-                charIndex++;
-                if (charIndex % 3 === 0) {
-                    this.sound.play('typewriter', { volume: 0.4 });
+        const DEFAULT_TYPE_SPEED = 18; // ms per char fallback (faster text)
+
+        const startTyping = (typeSpeed) => {
+            this._typeTimer = this.time.addEvent({
+                delay: typeSpeed,
+                repeat: fullMessage.length - 1,
+                callback: () => {
+                    charIndex++;
+                    // Only play typewriter ticks if there's no voice audio
+                    if (!this._npcAudio && charIndex % 3 === 0) {
+                        this.sound.play('typewriter', { volume: 0.4 });
+                    }
+                    msgText.setText(fullMessage.substring(0, charIndex));
                 }
-                msgText.setText(fullMessage.substring(0, charIndex));
-            }
-        });
+            });
+
+            // Auto-finish when typing completes naturally
+            this.time.delayedCall(fullMessage.length * typeSpeed, () => {
+                if (this._isTyping) finishTyping();
+            });
+        };
 
         const finishTyping = () => {
             if (this._typeTimer) this._typeTimer.remove(false);
             msgText.setText(fullMessage);
             this._isTyping = false;
+
+            // Stop voice audio if user skipped the typewriter
+            if (this._npcAudio) {
+                this._npcAudio.pause();
+                this._npcAudio.currentTime = 0;
+            }
 
             // Animate choices in after typing finishes
             if (!this._choicesAnimatedIn && playerElements.length > 0) {
@@ -91,10 +123,26 @@ export class DialogueScene extends Scene {
             }
         };
 
-        // Auto-finish if typing competes naturally
-        this.time.delayedCall(fullMessage.length * typeSpeed, () => {
-            if (this._isTyping) finishTyping();
-        });
+        // If we have audio, wait for its metadata to get the duration,
+        // then sync the typewriter speed so they finish together.
+        if (this._npcAudio) {
+            this._npcAudio.addEventListener('loadedmetadata', () => {
+                const audioDurationMs = this._npcAudio.duration * 1000;
+                // Leave a small buffer (300ms) so text finishes just before audio ends
+                const syncedSpeed = Math.max(15, Math.floor((audioDurationMs - 300) / fullMessage.length));
+                startTyping(syncedSpeed);
+                this._npcAudio.play().catch(e => console.warn('Audio autoplay blocked:', e));
+            });
+            // Fallback: if metadata doesn't load within 1s, start with default speed
+            this.time.delayedCall(1000, () => {
+                if (this._isTyping && !this._typeTimer) {
+                    startTyping(DEFAULT_TYPE_SPEED);
+                    this._npcAudio.play().catch(e => console.warn('Audio autoplay blocked:', e));
+                }
+            });
+        } else {
+            startTyping(DEFAULT_TYPE_SPEED);
+        }
 
         // ─── KEYBOARD HANDLING ───
         this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
@@ -228,17 +276,28 @@ export class DialogueScene extends Scene {
         msgText.setScrollFactor(0);
         msgText.setDepth(11);
 
-        // ── Separator label ──
-        const hasChoices = this.currentData.player_choices && this.currentData.player_choices.length > 0;
-        const sepText = hasChoices ? '— choose your response —' : '— press ENTER or ESC to leave —';
-        const sepLabel = this.add.text(400, barH + 8, sepText, {
-            fontSize: '10px',
-            fontFamily: 'RetroGaming',
-            color: '#555555'
+        // ── Speaker toggle button (top-right of NPC bar) ──
+        const voicePref = localStorage.getItem('open_gaia_voice_enabled')
+        this._voiceEnabled = voicePref === null ? true : voicePref === 'true'
+        const speakerIcon = this._voiceEnabled ? '🔊' : '🔇'
+        this._speakerBtn = this.add.text(barW - 40, barH - 24, speakerIcon, {
+            fontSize: '16px',
+            fontFamily: 'sans-serif',
         });
-        sepLabel.setOrigin(0.5, 0);
-        sepLabel.setScrollFactor(0);
-        sepLabel.setDepth(11);
+        this._speakerBtn.setScrollFactor(0);
+        this._speakerBtn.setDepth(12);
+        this._speakerBtn.setInteractive({ useHandCursor: true });
+        this._speakerBtn.on('pointerdown', () => {
+            this._voiceEnabled = !this._voiceEnabled;
+            this._speakerBtn.setText(this._voiceEnabled ? '🔊' : '🔇');
+            EventBus.emit('voice-toggle', this._voiceEnabled);
+
+            // If muting, stop any currently playing audio
+            if (!this._voiceEnabled && this._npcAudio) {
+                this._npcAudio.pause();
+                this._npcAudio.currentTime = 0;
+            }
+        });
 
         return msgText;
     }
@@ -486,6 +545,14 @@ export class DialogueScene extends Scene {
         if (this._isClosing) return;
         this._isClosing = true;
 
+        // Stop TTS audio on close
+        if (this._npcAudio) {
+            this._npcAudio.pause();
+            this._npcAudio.currentTime = 0;
+            if (this._npcAudio.src) URL.revokeObjectURL(this._npcAudio.src);
+            this._npcAudio = null;
+        }
+
         this.input.keyboard.removeAllKeys();
 
         this.tweens.add({
@@ -501,6 +568,12 @@ export class DialogueScene extends Scene {
     }
 
     shutdown() {
+        // Clean up audio on scene shutdown
+        if (this._npcAudio) {
+            this._npcAudio.pause();
+            if (this._npcAudio.src) URL.revokeObjectURL(this._npcAudio.src);
+            this._npcAudio = null;
+        }
         if (this.escKey) this.escKey.removeAllListeners();
         if (this.upKey) this.upKey.removeAllListeners();
         if (this.downKey) this.downKey.removeAllListeners();
