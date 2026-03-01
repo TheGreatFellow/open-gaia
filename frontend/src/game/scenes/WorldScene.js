@@ -1,5 +1,7 @@
 import { Scene } from 'phaser';
 import { EventBus } from '../EventBus';
+import { generateLocationMap } from '../proceduralMapGenerator';
+import { TILE_DEFS } from '../tilesetDefs';
 
 // ═══════════════════════════════════════════════════════════
 //  TILE FRAME REFERENCE (basechip.png — 8 cols × 133 rows)
@@ -134,11 +136,12 @@ function generateIslandMap() {
     };
 }
 
-// ─── Map generators by location ID (fallback/defaults) ───
+// ─── Map generators by location ID (legacy overrides — empty to use procedural gen) ───
 const MAP_GENERATORS = {
-    'loc_research_station': generateResearchStationMap,
-    'loc_ocean_route': generateOceanRouteMap,
-    'loc_okafor_island': generateIslandMap
+    // Uncomment to override specific locations with hardcoded maps:
+    // 'loc_research_station': generateResearchStationMap,
+    // 'loc_ocean_route': generateOceanRouteMap,
+    // 'loc_okafor_island': generateIslandMap,
 };
 
 // ═══════════════════════════════════════════
@@ -155,10 +158,51 @@ export class WorldScene extends Scene {
 
     buildLocationsFromBible(bible) {
         const locations = {};
+        const locOrder = bible.locations.map(l => l.id);
+
         for (const loc of bible.locations) {
-            // Default to research station map if ID not exactly matched
-            const gen = MAP_GENERATORS[loc.id] || generateResearchStationMap;
-            const mapData = gen();
+            const currentIdx = locOrder.indexOf(loc.id);
+
+            // Determine exit edges from connected locations
+            const exitEdges = [];
+            const exitIds = [];
+            for (const connId of (loc.connected_to || [])) {
+                const destIdx = locOrder.indexOf(connId);
+                const edge = (destIdx > currentIdx) ? 'right' : 'left';
+                exitEdges.push(edge);
+                exitIds.push(connId);
+            }
+
+            // Map terrain_type to tile style
+            const terrainToStyle = {
+                'underwater_station': 'station',
+                'ocean': 'ocean',
+                'tropical_island': 'island',
+                'cave': 'cave',
+            };
+            const tileStyle = terrainToStyle[loc.terrain_type] || 'default';
+
+            // Hero region: first location starts left, others depend on arrival direction
+            const heroRegion = (currentIdx === 0) ? 'left' : 'left';
+            const npcRegion = 'right';
+
+            // Use procedural generator (hardcoded MAP_GENERATORS can override if needed)
+            const customGen = MAP_GENERATORS[loc.id];
+            let mapData;
+            if (customGen) {
+                mapData = customGen();
+            } else {
+                mapData = generateLocationMap({
+                    width: 25,
+                    height: 19,
+                    heroRegion,
+                    npcRegion,
+                    exitEdges: exitEdges.length > 0 ? exitEdges : ['right'],
+                    exitIds,
+                    targetFloorRatio: 0.45,
+                    tileStyle,
+                });
+            }
 
             // Find NPCs for this location
             const chars = (loc.npcs_present || []).map(npcId => {
@@ -197,7 +241,7 @@ export class WorldScene extends Scene {
                             type: 'tilelayer',
                             width: mapData.width,
                             height: mapData.height,
-                            data: mapData.ground
+                            data: mapData.cellTypes || mapData.ground || []
                         },
                         {
                             name: 'collision',
@@ -211,13 +255,26 @@ export class WorldScene extends Scene {
                             type: 'objectgroup',
                             objects: [
                                 { name: 'player_start', x: mapData.playerStart.x, y: mapData.playerStart.y, width: 32, height: 32 },
-                                { name: 'npc_spawn_1', x: mapData.npcSpawn.x, y: mapData.npcSpawn.y, width: 32, height: 32 }
+                                { name: 'npc_spawn_1', x: mapData.npcSpawn.x, y: mapData.npcSpawn.y, width: 32, height: 32 },
+                                ...(mapData.exits || []).map(exit => ({
+                                    name: `exit_${exit.id}`,
+                                    x: exit.x, y: exit.y,
+                                    width: 32, height: 32,
+                                    edge: exit.edge, destinationId: exit.id,
+                                }))
                             ]
                         }
                     ]
                 },
                 characters: chars,
-                tileFrames: mapData.tileFrames
+                // New tile system
+                groundDefNames: mapData.groundDefNames || null,
+                treePositions: mapData.treePositions || [],
+                cellTypes: mapData.cellTypes || null,
+                npcPatrolBounds: mapData.npcPatrolBounds || null,
+                // Legacy compat
+                tileFrames: mapData.tileFrames || null,
+                groundFrames: mapData.groundFrames || null,
             };
         }
         return locations;
@@ -309,44 +366,152 @@ export class WorldScene extends Scene {
         // ─── Render ground layer ───
         this.wallBodies = [];
         this.waterBodies = [];
-        if (groundLayer) {
+
+        // Blocking logical cell types from the procedural generator
+        const BLOCKING_CELLS = new Set(['wall', 'path', 'tree', 'treeOcc', 'bush', 'rock', 'water']);
+
+        if (groundLayer && locData.groundDefNames) {
+            // ── New tile-defs rendering ──
+            for (let i = 0; i < groundLayer.data.length; i++) {
+                const cellType = groundLayer.data[i];
+                const defName = locData.groundDefNames[i];
+                const tx = i % cols;
+                const ty = Math.floor(i / cols);
+                const px = tx * tw + tw / 2;
+                const py = ty * th + th / 2;
+
+                // Skip tree-occupied cells (rendered by multi-tile pass)
+                if (cellType === 'tree') {
+                    // Render grass/floor under the tree first
+                    const def = defName ? TILE_DEFS[defName] : null;
+                    if (!def) {
+                        this.add.image(px, py, 'basechip', 40); // default grass
+                    } else if (def.frame != null) {
+                        // Single-tile under multi-tile → skip, handled below
+                    }
+                    continue; // tree rendering separate pass
+                }
+                if (cellType === 'treeOcc') {
+                    // Render floor underneath, tree rendered by multi-tile pass
+                    this.add.image(px, py, 'basechip', 40);
+                    continue;
+                }
+
+                // Look up the tile def
+                const def = defName ? TILE_DEFS[defName] : null;
+                if (def && def.frame != null) {
+                    this.add.image(px, py, 'basechip', def.frame);
+                } else {
+                    this.add.image(px, py, 'basechip', 40); // fallback grass
+                }
+
+                // Collision for blocking cells
+                if (BLOCKING_CELLS.has(cellType)) {
+                    const rect = this.add.rectangle(px, py, tw, th).setVisible(false);
+                    this.physics.add.existing(rect, true);
+                    if (cellType === 'water') this.waterBodies.push(rect);
+                    else this.wallBodies.push(rect);
+                }
+            }
+
+            // ── Multi-tile tree rendering ──
+            if (locData.treePositions && locData.treePositions.length > 0) {
+                for (const tree of locData.treePositions) {
+                    const def = TILE_DEFS[tree.defName];
+                    if (!def || !def.frames) continue;
+
+                    for (let dy = 0; dy < def.height; dy++) {
+                        for (let dx = 0; dx < def.width; dx++) {
+                            const frame = def.frames[dy][dx];
+                            const px = (tree.x + dx) * tw + tw / 2;
+                            const py = (tree.y + dy) * th + th / 2;
+
+                            // Render floor underneath
+                            this.add.image(px, py, 'basechip', 40);
+                            // Render tree sub-tile
+                            const treeImg = this.add.image(px, py, 'basechip', frame);
+
+                            // Canopy (top row) at higher depth
+                            if (dy === 0) {
+                                treeImg.setDepth(10); // above player
+                            } else {
+                                treeImg.setDepth(1);
+                            }
+
+                            // Collision only on trunk (bottom row)
+                            if (def.collision) {
+                                const hasCollision = def.collision.some(c => c[0] === dx && c[1] === dy);
+                                if (hasCollision) {
+                                    const rect = this.add.rectangle(px, py, tw, th).setVisible(false);
+                                    this.physics.add.existing(rect, true);
+                                    this.wallBodies.push(rect);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (groundLayer) {
+            // ── Legacy rendering (fallback for hardcoded maps) ──
             for (let i = 0; i < groundLayer.data.length; i++) {
                 const tileVal = groundLayer.data[i];
-                const x = (i % cols) * tw + tw / 2;
-                const y = Math.floor(i / cols) * th + th / 2;
-
-                const frame = locData.tileFrames[tileVal] ?? locData.tileFrames[0] ?? 73;
-                this.add.image(x, y, 'basechip', frame);
-
-                // Walls (1) get collision
+                const px = (i % cols) * tw + tw / 2;
+                const py = Math.floor(i / cols) * th + th / 2;
+                const frame = (locData.groundFrames && locData.groundFrames[i] != null)
+                    ? locData.groundFrames[i]
+                    : (locData.tileFrames?.[tileVal] ?? 73);
+                this.add.image(px, py, 'basechip', frame);
                 if (tileVal === 1) {
-                    const rect = this.add.rectangle(x, y, tw, th).setVisible(false);
+                    const rect = this.add.rectangle(px, py, tw, th).setVisible(false);
                     this.physics.add.existing(rect, true);
                     this.wallBodies.push(rect);
-                }
-                // Water (0 in ocean/island contexts or 9) blocks player
-                if (tileVal === 9 || (locId === 'loc_ocean_route' && tileVal === 0)) {
-                    const rect = this.add.rectangle(x, y, tw, th).setVisible(false);
-                    this.physics.add.existing(rect, true);
-                    this.waterBodies.push(rect);
                 }
             }
         }
 
+        // ─── Helper: find nearest walkable tile for spawn ───
+        const findNearestWalkable = (tileX, tileY) => {
+            const cellTypes = locData.cellTypes;
+            if (!cellTypes) return { x: tileX * tw + tw / 2, y: tileY * th + th / 2 };
+            const walkableTypes = new Set(['floor', 'path', 'exit']);
+            // Check the exact tile first
+            if (tileX >= 0 && tileX < cols && tileY >= 0 && tileY < rows) {
+                if (walkableTypes.has(cellTypes[tileY * cols + tileX])) {
+                    return { x: tileX * tw + tw / 2, y: tileY * th + th / 2 };
+                }
+            }
+            // BFS outward to find nearest walkable
+            for (let r = 1; r < Math.max(cols, rows); r++) {
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                        const nx = tileX + dx, ny = tileY + dy;
+                        if (nx < 0 || nx >= cols || ny < 0 || ny >= rows) continue;
+                        if (walkableTypes.has(cellTypes[ny * cols + nx])) {
+                            return { x: nx * tw + tw / 2, y: ny * th + th / 2 };
+                        }
+                    }
+                }
+            }
+            return { x: tileX * tw + tw / 2, y: tileY * th + th / 2 };
+        };
+
         // ─── Player spawn ───
         let playerX = worldW / 2, playerY = worldH / 2;
 
-        // If arriving from another map, spawn near the edge the player entered from
         if (data && data._arrivalEdge === 'left') {
-            // Arrived from the left edge → spawn on the left side
-            playerX = 48;
-            playerY = worldH / 2;
+            const spawn = findNearestWalkable(1, Math.floor(rows / 2));
+            playerX = spawn.x; playerY = spawn.y;
         } else if (data && data._arrivalEdge === 'right') {
-            // Arrived from the right edge → spawn on the right side
-            playerX = worldW - 48;
-            playerY = worldH / 2;
+            const spawn = findNearestWalkable(cols - 2, Math.floor(rows / 2));
+            playerX = spawn.x; playerY = spawn.y;
+        } else if (data && data._arrivalEdge === 'top') {
+            const spawn = findNearestWalkable(Math.floor(cols / 2), 1);
+            playerX = spawn.x; playerY = spawn.y;
+        } else if (data && data._arrivalEdge === 'bottom') {
+            const spawn = findNearestWalkable(Math.floor(cols / 2), rows - 2);
+            playerX = spawn.x; playerY = spawn.y;
         } else if (objectsLayer) {
-            // Default: use the map's player_start position
             const ps = objectsLayer.objects.find(o => o.name === 'player_start');
             if (ps) { playerX = ps.x + 16; playerY = ps.y + 16; }
         }
@@ -398,16 +563,25 @@ export class WorldScene extends Scene {
             const animKey = `${charData.spriteKey}-walk-down`;
             if (this.anims.exists(animKey)) { npc.anims.play(animKey); }
 
-            // Patrol setup
+            // Patrol setup — use safe bounds from generator
             if (charData.patrol) {
-                npc.setData('patrolOriginY', charData.spawnY);
-                npc.setData('patrolDistance', charData.patrol.distance);
-                npc.setData('patrolSpeed', charData.patrol.speed);
-                npc.setData('patrolDir', 1);
-                npc.setData('isPatrolling', true);
+                const bounds = locData.npcPatrolBounds;
+                if (bounds && bounds.distance > 0) {
+                    npc.setData('patrolMinY', bounds.minY);
+                    npc.setData('patrolMaxY', bounds.maxY);
+                    npc.setData('patrolSpeed', charData.patrol.speed);
+                    npc.setData('patrolDir', 1);
+                    npc.setData('isPatrolling', true);
+                } else {
+                    // No safe patrol range — stay still
+                    npc.setData('isPatrolling', false);
+                }
             }
 
+            // NPC collides with player AND walls
             this.physics.add.collider(this.player, npc);
+            for (const wall of this.wallBodies) { this.physics.add.collider(npc, wall); }
+            for (const water of this.waterBodies) { this.physics.add.collider(npc, water); }
 
             // Interaction zone
             const zone = this.add.zone(charData.spawnX, charData.spawnY, 120, 120);
@@ -681,13 +855,14 @@ export class WorldScene extends Scene {
                     npc.anims.play(dy > 0 ? `${npc.texture.key}-walk-down` : `${npc.texture.key}-walk-up`, true);
                 }
             } else {
-                const originY = npc.getData('patrolOriginY');
-                const patrolDist = npc.getData('patrolDistance');
+                const patrolMinY = npc.getData('patrolMinY');
+                const patrolMaxY = npc.getData('patrolMaxY');
                 const patrolSpeed = npc.getData('patrolSpeed');
                 let dir = npc.getData('patrolDir');
 
-                if (npc.y >= originY + patrolDist / 2) { dir = -1; npc.setData('patrolDir', -1); }
-                else if (npc.y <= originY - patrolDist / 2) { dir = 1; npc.setData('patrolDir', 1); }
+                // Reverse direction at walkable bounds
+                if (npc.y >= patrolMaxY) { dir = -1; npc.setData('patrolDir', -1); }
+                else if (npc.y <= patrolMinY) { dir = 1; npc.setData('patrolDir', 1); }
 
                 npc.body.setVelocityY(dir * patrolSpeed);
                 npc.anims.play(
